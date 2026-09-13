@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { RefreshCw, AlertCircle, Info } from "lucide-react";
+import { RefreshCw, AlertCircle, Sparkles, Check, Key, ShieldCheck, X } from "lucide-react";
 
 declare global {
   interface Window {
@@ -62,6 +62,12 @@ export default function GoogleSignInButton({
   const [activeClientId, setActiveClientId] = useState<string>(
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""
   );
+
+  // In-modal quick configuration inputs
+  const [inputClientId, setInputClientId] = useState("");
+  const [inputClientSecret, setInputClientSecret] = useState("");
+  const [savingConfig, setSavingConfig] = useState(false);
+
   const gsiButtonRef = useRef<HTMLDivElement>(null);
 
   // Fetch client ID from server config dynamically
@@ -225,6 +231,47 @@ export default function GoogleSignInButton({
     }
   };
 
+  // Quick In-Browser Key Configuration Submission
+  const handleSaveDevConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputClientId.trim()) return;
+
+    setSavingConfig(true);
+    setErrorMessage(null);
+
+    try {
+      const res = await fetch("/api/auth/google/dev-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: inputClientId.trim(),
+          clientSecret: inputClientSecret.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.clientId) {
+        setActiveClientId(data.clientId);
+        setShowConfigModal(false);
+
+        // Immediately initialize GIS and trigger prompt
+        if (window.google?.accounts?.id) {
+          window.google.accounts.id.initialize({
+            client_id: data.clientId,
+            callback: handleCredentialResponse,
+          });
+          window.google.accounts.id.prompt();
+        }
+      } else {
+        setErrorMessage(data.error || "Failed to save configuration.");
+      }
+    } catch {
+      setErrorMessage("Failed to save credentials to local configuration.");
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
   return (
     <div className={`w-full ${className}`}>
       {errorMessage && (
@@ -277,43 +324,92 @@ export default function GoogleSignInButton({
         )}
       </button>
 
-      {/* Developer Environment Setup Helper Modal */}
+      {/* 🚀 Quick In-Browser Google OAuth Key Setup Modal */}
       {showConfigModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-museum-ivory border border-museum-stone rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-museum-ivory border border-museum-stone rounded-2xl p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-4 relative text-museum-charcoal">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowConfigModal(false)}
+              className="absolute top-4 right-4 p-1.5 text-museum-charcoalLight hover:text-museum-charcoal hover:bg-museum-parchment rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
             <div className="flex items-center gap-3 text-museum-terracotta">
-              <div className="p-2 rounded-xl bg-museum-terracotta/10 border border-museum-terracotta/20">
-                <Info className="w-5 h-5" />
+              <div className="p-2.5 rounded-xl bg-museum-terracotta/10 border border-museum-terracotta/20">
+                <Key className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-serif font-bold text-lg text-museum-charcoal">
-                  Google OAuth Configuration
+                <h3 className="font-serif font-bold text-xl text-museum-charcoal">
+                  Connect Google Client ID
                 </h3>
-                <span className="text-[10px] font-mono text-museum-terracotta uppercase">
-                  SETUP ENVIRONMENT VARIABLES
+                <span className="text-[10px] font-mono text-museum-terracotta uppercase font-semibold">
+                  QUICK 1-STEP CONFIGURATION
                 </span>
               </div>
             </div>
 
             <p className="text-xs text-museum-charcoalLight leading-relaxed">
-              Google OAuth requires your Google Cloud Console Client ID to be present in your environment variables.
+              Paste your <strong>Google Client ID</strong> below to immediately activate Google Sign-In on your local machine.
             </p>
 
-            <div className="p-3 bg-museum-parchment rounded-xl border border-museum-stone text-[11px] font-mono space-y-1 text-museum-charcoal">
-              <p className="text-museum-terracotta font-semibold"># In your .env.local file or Vercel:</p>
-              <p>GOOGLE_CLIENT_ID=&quot;your-google-client-id.apps.googleusercontent.com&quot;</p>
-              <p>GOOGLE_CLIENT_SECRET=&quot;your-google-client-secret&quot;</p>
-            </div>
+            <form onSubmit={handleSaveDevConfig} className="space-y-3.5 pt-1">
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoal font-bold mb-1.5">
+                  GOOGLE CLIENT ID <span className="text-museum-terracotta">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={inputClientId}
+                  onChange={(e) => setInputClientId(e.target.value)}
+                  placeholder="e.g. 123456789-xxxx.apps.googleusercontent.com"
+                  autoFocus
+                  required
+                  className="w-full bg-museum-parchment border border-museum-stone rounded-xl p-3 text-xs text-museum-charcoal placeholder:text-museum-charcoalLight/60 font-mono focus:border-museum-terracotta focus:outline-none transition-colors"
+                />
+              </div>
 
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowConfigModal(false)}
-                className="w-full py-2.5 bg-museum-terracotta text-white rounded-xl text-xs font-sans font-bold uppercase tracking-wider hover:bg-museum-mutedRed transition-colors cursor-pointer"
-              >
-                GOT IT
-              </button>
-            </div>
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoal font-bold mb-1.5">
+                  GOOGLE CLIENT SECRET <span className="text-museum-charcoalLight text-[10px]">(Optional for local)</span>
+                </label>
+                <input
+                  type="password"
+                  value={inputClientSecret}
+                  onChange={(e) => setInputClientSecret(e.target.value)}
+                  placeholder="e.g. GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full bg-museum-parchment border border-museum-stone rounded-xl p-3 text-xs text-museum-charcoal placeholder:text-museum-charcoalLight/60 font-mono focus:border-museum-terracotta focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(false)}
+                  className="px-4 py-3 border border-museum-stone text-museum-charcoalLight hover:text-museum-charcoal text-xs font-sans uppercase tracking-wider rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingConfig || !inputClientId.trim()}
+                  className="flex-1 py-3 bg-museum-terracotta hover:bg-museum-mutedRed text-white text-xs font-sans font-bold uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {savingConfig ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>SAVING & LAUNCHING...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>SAVE & START GOOGLE LOGIN</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
