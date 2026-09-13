@@ -208,7 +208,7 @@ export const translations: Record<Language, Translations> = {
     nav: {
       home: "ପ୍ରଚ୍ଛଦ",
       research: "ଗବେଷଣା",
-      globe: "୩ଡି ଗ୍ଲୋବ",
+      globe: "ବ୍ଲଗ୍ ଓ ଅପଡେଟ୍",
       india: "ଭାରତ ଇତିହାସ",
       publications: "ପ୍ରକାଶନ",
       about: "ପରିଚୟ",
@@ -386,7 +386,7 @@ export const translations: Record<Language, Translations> = {
     nav: {
       home: "HOME",
       research: "RESEARCH",
-      globe: "3D GLOBE",
+      globe: "BLOG & UPDATES",
       india: "INDIA (ODIA)",
       publications: "PUBLICATIONS",
       about: "ABOUT",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/navigation/Navbar";
 import Footer from "@/components/ui/Footer";
 import {
@@ -91,12 +91,27 @@ const initialPdfs: ResearchPdfItem[] = [
 export default function ResearchPage() {
   const { language } = useLanguage();
   const isOdia = language === "or";
-
   const [pdfList, setPdfList] = useState<ResearchPdfItem[]>(initialPdfs);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [session, setSession] = useState<{
+    name: string;
+    email: string;
+    isAdmin: boolean;
+  } | null>(null);
 
-  // New PDF Form State
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated && data.user) {
+          setSession(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Form State
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Modern Odisha History");
   const [year, setYear] = useState(new Date().getFullYear().toString());
@@ -235,19 +250,21 @@ startxref
 
             <p className="font-sans text-base sm:text-lg text-museum-charcoalLight max-w-2xl mt-4 leading-relaxed">
               {isOdia
-                ? "ଡକ୍ଟର ଭାନ୍ସଙ୍କ ପ୍ରାମାଣିକ ଗବେଷଣା ପତ୍ର, ଶିଳାଲେଖ ବିଶ୍ଳେଷଣ ଏବଂ ଗୁଗଲ୍ ଡ୍ରାଇଭ୍ (Google Drive) ଲିଙ୍କ୍ ଯୁକ୍ତ ସଂରକ୍ଷିତ PDF ଭଣ୍ଡାର।"
-                : "Curated repository of working papers, epigraphic field notes, and downloadable PDF monographs with owner commentary and Google Drive cloud integration."}
+                ? "ଡକ୍ଟର ଅଞ୍ଜନ କୁମାର ପାଲଙ୍କ ପ୍ରାମାଣିକ ଗବେଷଣା ପତ୍ର, ଶିଳାଲେଖ ବିଶ୍ଳେଷଣ ଏବଂ ଗୁଗଲ୍ ଡ୍ରାଇଭ୍ (Google Drive) ଲିଙ୍କ୍ ଯୁକ୍ତ ସଂରକ୍ଷିତ PDF ଭଣ୍ଡାର।"
+                : "Curated repository of working papers, historical field notes, and downloadable PDF monographs with owner commentary and Google Drive cloud integration."}
             </p>
           </div>
 
-          {/* Add PDF Button */}
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-museum-terracotta text-white hover:bg-museum-mutedRed text-xs font-sans font-bold uppercase tracking-wider transition-all rounded-xl shadow-md flex-shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{isOdia ? "ନୂଆ PDF ଓ ଡ୍ରାଇଭ୍ ଲିଙ୍କ୍ ଯୋଡ଼ନ୍ତୁ" : "ADD RESEARCH PDF & DRIVE LINK"}</span>
-          </button>
+          {/* Add PDF Button - Visible ONLY to Admin (Dr. Anjan Kumar Pal) */}
+          {session?.isAdmin && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-museum-terracotta text-white hover:bg-museum-mutedRed text-xs font-sans font-bold uppercase tracking-wider transition-all rounded-xl shadow-md flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isOdia ? "ନୂଆ PDF ଓ ଡ୍ରାଇଭ୍ ଲିଙ୍କ୍ ଯୋଡ଼ନ୍ତୁ" : "ADD RESEARCH PDF & DRIVE LINK"}</span>
+            </button>
+          )}
         </div>
       </section>
 
@@ -341,13 +358,15 @@ startxref
                   </span>
 
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <button
-                      onClick={() => handleDelete(pdf.id)}
-                      className="p-2 text-museum-charcoalLight hover:text-museum-terracotta transition-colors rounded-lg hover:bg-museum-parchment"
-                      title={isOdia ? "ପତ୍ର ହଟାନ୍ତୁ" : "Remove paper"}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {session?.isAdmin && (
+                      <button
+                        onClick={() => handleDelete(pdf.id)}
+                        className="p-2 text-museum-charcoalLight hover:text-museum-terracotta transition-colors rounded-lg hover:bg-museum-parchment"
+                        title={isOdia ? "ପତ୍ର ହଟାନ୍ତୁ" : "Remove paper"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
 
                     {pdf.driveUrl && (
                       <a
@@ -377,8 +396,8 @@ startxref
         )}
       </section>
 
-      {/* Add PDF & Google Drive Modal */}
-      {showAddModal && (
+      {/* Add PDF & Google Drive Modal (Admin Only) */}
+      {session?.isAdmin && showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-museum-charcoal/60 backdrop-blur-sm">
           <div className="bg-museum-ivory border border-museum-stone rounded-2xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-museum-stone pb-4">

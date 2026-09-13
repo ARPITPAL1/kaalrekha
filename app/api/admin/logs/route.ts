@@ -6,6 +6,8 @@ import {
   getEnquiryLogs,
   updateEnquiryLogStatus,
   deleteEnquiryLog,
+  getVisitorLoginLogs,
+  deleteVisitorLoginLog,
   isUserAdmin,
 } from "@/lib/auth";
 
@@ -24,6 +26,7 @@ export async function GET() {
     }
 
     const logs = getEnquiryLogs();
+    const visitorLogins = getVisitorLoginLogs();
     const todayStr = new Date().toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
@@ -35,12 +38,16 @@ export async function GET() {
       today: logs.filter((l) => l.dateFormatted === todayStr).length,
       unread: logs.filter((l) => l.status === "UNREAD").length,
       reviewed: logs.filter((l) => l.status === "REVIEWED").length,
+      visitorTotal: visitorLogins.length,
+      visitorToday: visitorLogins.filter((v) => v.dateFormatted === todayStr).length,
+      visitorUnique: new Set(visitorLogins.map((v) => v.email)).size,
     };
 
     return NextResponse.json({
       success: true,
       stats,
       logs,
+      visitorLogins,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Internal Server Error";
@@ -89,9 +96,18 @@ export async function DELETE(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const type = searchParams.get("type"); // "visitor" or undefined (enquiry)
 
     if (!id) {
       return NextResponse.json({ error: "Missing log ID" }, { status: 400 });
+    }
+
+    if (type === "visitor") {
+      const deleted = deleteVisitorLoginLog(id);
+      if (!deleted) {
+        return NextResponse.json({ error: "Visitor log not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, message: "Visitor login log entry deleted." });
     }
 
     const deleted = deleteEnquiryLog(id);

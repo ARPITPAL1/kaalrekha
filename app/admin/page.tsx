@@ -50,11 +50,28 @@ interface LogEntry {
   status: "UNREAD" | "REVIEWED" | "ARCHIVED";
 }
 
+interface VisitorLogEntry {
+  id: string;
+  userId?: string;
+  name: string;
+  email: string;
+  picture?: string;
+  provider: "google" | "email" | "guest";
+  role: "ADMIN" | "USER";
+  timestamp: number;
+  dateFormatted: string;
+  timeFormatted: string;
+  isoDate: string;
+}
+
 interface LogStats {
   total: number;
   today: number;
   unread: number;
   reviewed: number;
+  visitorTotal?: number;
+  visitorToday?: number;
+  visitorUnique?: number;
 }
 
 export default function AdminPage() {
@@ -66,12 +83,14 @@ export default function AdminPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Active Admin Tab: "LOG_BOOK" | "ADD_RESEARCH" | "OVERVIEW"
-  const [activeTab, setActiveTab] = useState<"LOG_BOOK" | "ADD_RESEARCH" | "OVERVIEW">("LOG_BOOK");
+  // Active Admin Tab: "LOG_BOOK" | "VISITOR_LOGBOOK" | "ADD_RESEARCH" | "OVERVIEW"
+  const [activeTab, setActiveTab] = useState<"LOG_BOOK" | "VISITOR_LOGBOOK" | "ADD_RESEARCH" | "OVERVIEW">("LOG_BOOK");
 
   // Log Book Data & Filter States
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [stats, setStats] = useState<LogStats>({ total: 0, today: 0, unread: 0, reviewed: 0 });
+  const [visitorLogins, setVisitorLogins] = useState<VisitorLogEntry[]>([]);
+  const [visitorSearch, setVisitorSearch] = useState("");
+  const [stats, setStats] = useState<LogStats>({ total: 0, today: 0, unread: 0, reviewed: 0, visitorTotal: 0, visitorToday: 0, visitorUnique: 0 });
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "UNREAD" | "REVIEWED">("ALL");
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
@@ -108,9 +127,10 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/logs");
       const data = await res.json();
-      if (data.success && data.logs) {
-        setLogs(data.logs);
-        setStats(data.stats || { total: data.logs.length, today: 0, unread: 0, reviewed: 0 });
+      if (data.success) {
+        if (data.logs) setLogs(data.logs);
+        if (data.visitorLogins) setVisitorLogins(data.visitorLogins);
+        if (data.stats) setStats(data.stats);
       }
     } catch {
       console.warn("Failed to load logs");
@@ -146,7 +166,7 @@ export default function AdminPage() {
     }
   };
 
-  // Delete Log
+  // Delete Enquiry Log
   const handleDeleteLog = async (id: string) => {
     if (!confirm("Are you sure you want to permanently delete this log book entry?")) return;
     try {
@@ -160,7 +180,20 @@ export default function AdminPage() {
     }
   };
 
-  // Filtered Logs
+  // Delete Visitor Login Log
+  const handleDeleteVisitorLog = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this visitor login record?")) return;
+    try {
+      const res = await fetch(`/api/admin/logs?id=${id}&type=visitor`, { method: "DELETE" });
+      if (res.ok) {
+        setVisitorLogins((prev) => prev.filter((log) => log.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Filtered Enquiry Logs
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const matchesSearch =
@@ -176,6 +209,19 @@ export default function AdminPage() {
       return matchesSearch && matchesStatus;
     });
   }, [logs, searchQuery, statusFilter]);
+
+  // Filtered Visitor Logins
+  const filteredVisitors = useMemo(() => {
+    return visitorLogins.filter((v) => {
+      const q = visitorSearch.toLowerCase();
+      return (
+        v.name.toLowerCase().includes(q) ||
+        v.email.toLowerCase().includes(q) ||
+        v.provider.toLowerCase().includes(q) ||
+        v.dateFormatted.toLowerCase().includes(q)
+      );
+    });
+  }, [visitorLogins, visitorSearch]);
 
   // Handle Publishing Research
   const handlePublishResearch = async (e: React.FormEvent) => {
@@ -235,7 +281,31 @@ export default function AdminPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `KAALREKHA_LogBook_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `KAALREKHA_Enquiry_LogBook_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export Visitor Logbook to CSV
+  const exportVisitorCSV = () => {
+    if (visitorLogins.length === 0) return;
+    const headers = ["ID", "Date", "Time", "Scholar Name", "Email", "Provider", "Role"];
+    const rows = visitorLogins.map((v) => [
+      v.id,
+      v.dateFormatted,
+      v.timeFormatted,
+      `"${v.name.replace(/"/g, '""')}"`,
+      v.email,
+      v.provider,
+      v.role,
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `KAALREKHA_Visitor_Logbook_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -328,7 +398,19 @@ export default function AdminPage() {
               }`}
             >
               <BookOpen className="w-4 h-4" />
-              <span>LOG BOOK ({stats.total})</span>
+              <span>ENQUIRY LOGS ({stats.total})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("VISITOR_LOGBOOK")}
+              className={`px-4 py-2.5 rounded-lg text-xs font-mono font-bold uppercase transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === "VISITOR_LOGBOOK"
+                  ? "bg-museum-terracotta text-white shadow-xs"
+                  : "text-museum-charcoal hover:bg-museum-parchment"
+              }`}
+            >
+              <User className="w-4 h-4" />
+              <span>VISITOR LOGBOOK ({visitorLogins.length})</span>
             </button>
 
             <button
@@ -568,7 +650,155 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 2: RESEARCH PUBLISHER */}
+        {/* TAB 2: VISITOR LOGBOOK (Live Visitor Sign-Ins with Date & Time) */}
+        {activeTab === "VISITOR_LOGBOOK" && (
+          <div className="space-y-6">
+            {/* Visitor Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-5 bg-museum-parchment/60 border border-museum-stone rounded-2xl shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase text-museum-charcoalLight block font-semibold">
+                  TOTAL VISITOR SESSIONS
+                </span>
+                <p className="font-serif text-3xl font-bold text-museum-charcoal">{stats.visitorTotal ?? visitorLogins.length}</p>
+                <span className="text-[11px] text-museum-charcoalLight block">All recorded login events</span>
+              </div>
+
+              <div className="p-5 bg-museum-parchment/60 border border-museum-stone rounded-2xl shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase text-museum-terracotta block font-semibold">
+                  TODAY&apos;S VISITOR LOGINS
+                </span>
+                <p className="font-serif text-3xl font-bold text-museum-terracotta">{stats.visitorToday ?? 0}</p>
+                <span className="text-[11px] text-museum-charcoalLight block">Signed in today</span>
+              </div>
+
+              <div className="p-5 bg-museum-parchment/60 border border-museum-stone rounded-2xl shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase text-museum-olive block font-semibold">
+                  UNIQUE SCHOLARS / EMAILS
+                </span>
+                <p className="font-serif text-3xl font-bold text-museum-olive">{stats.visitorUnique ?? new Set(visitorLogins.map((v) => v.email)).size}</p>
+                <span className="text-[11px] text-museum-charcoalLight block">Distinct user accounts</span>
+              </div>
+            </div>
+
+            {/* Filter, Search & Export Bar for Visitor Logbook */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-museum-parchment/40 p-4 rounded-2xl border border-museum-stone">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-museum-charcoalLight" />
+                <input
+                  type="text"
+                  placeholder="Search visitor by name, email, or date..."
+                  value={visitorSearch}
+                  onChange={(e) => setVisitorSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-museum-ivory border border-museum-stone rounded-xl text-xs text-museum-charcoal focus:border-museum-terracotta focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchLogs}
+                  disabled={logsLoading}
+                  className="p-2.5 bg-museum-ivory border border-museum-stone hover:bg-museum-parchment rounded-xl text-museum-charcoal transition-all cursor-pointer"
+                  title="Refresh Visitor Logbook"
+                >
+                  <RefreshCw className={`w-4 h-4 ${logsLoading ? "animate-spin text-museum-terracotta" : ""}`} />
+                </button>
+
+                <button
+                  onClick={exportVisitorCSV}
+                  disabled={visitorLogins.length === 0}
+                  className="px-4 py-2.5 bg-museum-ivory border border-museum-stone hover:bg-museum-parchment text-museum-charcoal rounded-xl text-xs font-mono font-semibold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5 text-museum-terracotta" />
+                  <span>EXPORT VISITOR CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Visitor Logbook List */}
+            {filteredVisitors.length === 0 ? (
+              <div className="p-12 text-center bg-museum-parchment/30 border border-dashed border-museum-stone rounded-2xl space-y-2">
+                <User className="w-8 h-8 text-museum-charcoalLight/50 mx-auto" />
+                <p className="font-serif text-lg text-museum-charcoal">No visitor logins recorded yet.</p>
+                <p className="text-xs text-museum-charcoalLight">
+                  When a scholar logs in via Google or Email on the user side, their login timestamp and email will appear here automatically.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredVisitors.map((vlog) => (
+                  <div
+                    key={vlog.id}
+                    className="p-5 bg-museum-ivory border border-museum-stone rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-museum-terracotta/50 shadow-xs"
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Avatar / Picture */}
+                      {vlog.picture ? (
+                        <Image
+                          src={vlog.picture}
+                          alt={vlog.name}
+                          width={44}
+                          height={44}
+                          className="w-11 h-11 rounded-full object-cover border border-museum-stone shrink-0"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-full bg-museum-parchment border border-museum-stone flex items-center justify-center text-museum-terracotta font-serif font-bold text-base shrink-0">
+                          {vlog.name ? vlog.name.charAt(0).toUpperCase() : "V"}
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <h4 className="font-serif text-base font-bold text-museum-charcoal">{vlog.name}</h4>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                              vlog.role === "ADMIN"
+                                ? "bg-museum-terracotta text-white"
+                                : "bg-museum-parchment border border-museum-stone text-museum-charcoal"
+                            }`}
+                          >
+                            {vlog.role === "ADMIN" ? "ADMIN / OWNER" : "VISITOR"}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-50 text-blue-800 border border-blue-200">
+                            {vlog.provider === "google" ? "Google OAuth" : "Email Sign-In"}
+                          </span>
+                        </div>
+
+                        <p className="text-xs font-mono text-museum-terracotta font-semibold">
+                          {vlog.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Timestamp & Actions */}
+                    <div className="flex items-center gap-3 self-end md:self-center">
+                      <div className="text-right">
+                        <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-museum-charcoal">
+                          <Calendar className="w-3.5 h-3.5 text-museum-terracotta" />
+                          <span>{vlog.dateFormatted}</span>
+                        </div>
+                        <div className="flex items-center justify-end gap-1 text-[11px] font-mono text-museum-charcoalLight">
+                          <Clock className="w-3 h-3" />
+                          <span>{vlog.timeFormatted}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteVisitorLog(vlog.id)}
+                        className="p-2 bg-museum-ivory border border-museum-stone hover:bg-red-50 hover:text-red-700 text-museum-charcoalLight rounded-xl transition-all cursor-pointer"
+                        title="Delete Visitor Record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: RESEARCH PUBLISHER */}
         {activeTab === "ADD_RESEARCH" && (
           <div className="max-w-3xl mx-auto bg-museum-parchment/60 border border-museum-stone rounded-2xl p-6 sm:p-10 shadow-sm space-y-6">
             <div className="border-b border-museum-stone pb-4">

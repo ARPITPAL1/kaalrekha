@@ -54,7 +54,7 @@ export default function Footer() {
               <span className="text-[10px] font-mono text-museum-antiqueGold font-bold block">
                 {t.footer.institutional}
               </span>
-              <Link href="/globe" className="block text-museum-charcoalLight hover:text-museum-terracotta transition-colors">
+              <Link href="/blog" className="block text-museum-charcoalLight hover:text-museum-terracotta transition-colors">
                 {t.nav.globe}
               </Link>
               <Link href="/about" className="block text-museum-charcoalLight hover:text-museum-terracotta transition-colors">

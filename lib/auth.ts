@@ -43,6 +43,20 @@ export interface VisitorSession {
   isAdmin: boolean;
 }
 
+export interface VisitorLoginEntry {
+  id: string;
+  userId?: string;
+  name: string;
+  email: string;
+  picture?: string;
+  provider: "google" | "email" | "guest";
+  role: "ADMIN" | "USER";
+  timestamp: number;
+  dateFormatted: string;
+  timeFormatted: string;
+  isoDate: string;
+}
+
 export interface EnquiryLogEntry {
   id: string;
   fullName: string;
@@ -59,7 +73,7 @@ export interface EnquiryLogEntry {
   status: "UNREAD" | "REVIEWED" | "ARCHIVED";
 }
 
-// Memory store for verification tokens, active sessions, registered users, and enquiry logs
+// Memory store for verification tokens, active sessions, registered users, visitor logins, and enquiry logs
 declare global {
   // eslint-disable-next-line no-var
   var __historia_verifications: Map<string, PendingVerification> | undefined;
@@ -69,6 +83,8 @@ declare global {
   var __historia_users: Map<string, UserAccount> | undefined;
   // eslint-disable-next-line no-var
   var __historia_enquiry_logs: EnquiryLogEntry[] | undefined;
+  // eslint-disable-next-line no-var
+  var __historia_visitor_logbook: VisitorLoginEntry[] | undefined;
   // eslint-disable-next-line no-var
   var __historia_inbox_logs: Array<{
     id: string;
@@ -88,6 +104,7 @@ const verifications = global.__historia_verifications ?? new Map<string, Pending
 const sessions = global.__historia_sessions ?? new Map<string, VisitorSession>();
 const users = global.__historia_users ?? new Map<string, UserAccount>();
 const enquiryLogs = global.__historia_enquiry_logs ?? [];
+const visitorLogbook = global.__historia_visitor_logbook ?? [];
 const inboxLogs = global.__historia_inbox_logs ?? [];
 
 if (process.env.NODE_ENV !== "production") {
@@ -95,6 +112,7 @@ if (process.env.NODE_ENV !== "production") {
   global.__historia_sessions = sessions;
   global.__historia_users = users;
   global.__historia_enquiry_logs = enquiryLogs;
+  global.__historia_visitor_logbook = visitorLogbook;
   global.__historia_inbox_logs = inboxLogs;
 }
 
@@ -103,6 +121,55 @@ const TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 export function generateCryptoToken(): string {
   return crypto.randomBytes(32).toString("hex");
+}
+
+export function recordVisitorLogin(data: {
+  name: string;
+  email: string;
+  picture?: string;
+  provider: "google" | "email" | "guest";
+  role: "ADMIN" | "USER";
+  userId?: string;
+}): VisitorLoginEntry {
+  const now = new Date();
+  const entry: VisitorLoginEntry = {
+    id: `vlog_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`,
+    userId: data.userId,
+    name: data.name.trim() || "Visitor Scholar",
+    email: data.email.trim().toLowerCase(),
+    picture: data.picture,
+    provider: data.provider,
+    role: data.role,
+    timestamp: now.getTime(),
+    dateFormatted: now.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+    timeFormatted: now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }),
+    isoDate: now.toISOString(),
+  };
+
+  visitorLogbook.unshift(entry);
+  if (visitorLogbook.length > 500) visitorLogbook.pop();
+  return entry;
+}
+
+export function getVisitorLoginLogs(): VisitorLoginEntry[] {
+  return [...visitorLogbook];
+}
+
+export function deleteVisitorLoginLog(id: string): boolean {
+  const index = visitorLogbook.findIndex((log) => log.id === id);
+  if (index !== -1) {
+    visitorLogbook.splice(index, 1);
+    return true;
+  }
+  return false;
 }
 
 export function addEnquiryLog(data: {
@@ -321,6 +388,17 @@ export function createGoogleSession(user: UserAccount): VisitorSession {
   };
 
   sessions.set(sessionId, session);
+
+  // Automatically update the Visitor Logbook for the Admin portal
+  recordVisitorLogin({
+    userId: user.id,
+    name: user.name,
+    email: user.email,
+    picture: user.picture,
+    provider: "google",
+    role: session.role,
+  });
+
   return session;
 }
 
@@ -406,6 +484,15 @@ export function verifyTokenAndCreateSession(token: string): { success: boolean; 
   };
 
   sessions.set(sessionId, session);
+
+  // Automatically record visitor login
+  recordVisitorLogin({
+    name: record.name,
+    email: record.email,
+    provider: "email",
+    role: session.role,
+  });
+
   return { success: true, session };
 }
 
@@ -426,6 +513,15 @@ export function createDirectEmailSession(name: string, email: string): VisitorSe
   };
 
   sessions.set(sessionId, session);
+
+  // Record into Visitor Logbook
+  recordVisitorLogin({
+    name: cleanName,
+    email: cleanEmail,
+    provider: "email",
+    role: session.role,
+  });
+
   return session;
 }
 

@@ -52,7 +52,7 @@ export default function Navbar() {
   const navLinks = [
     { name: language === "or" ? "ପ୍ରଚ୍ଛଦ" : "HOME", href: "/" },
     { name: language === "or" ? "ଗବେଷଣା" : "RESEARCH", href: "/research" },
-    { name: language === "or" ? "୩ଡି ଗାଇଡ୍" : "3D GUIDE", href: "/globe" },
+    { name: language === "or" ? "ବ୍ଲଗ୍ ଓ ଅପଡେଟ୍" : "BLOG & FEED", href: "/blog" },
     { name: language === "or" ? "ଭାରତ (ଓଡ଼ିଶା)" : "INDIA (BHARAT)", href: "/india" },
     { name: language === "or" ? "ପରିଚୟ" : "ABOUT", href: "/about" },
     { name: language === "or" ? "ଅନୁସନ୍ଧାନ" : "ENQUIRY", href: "/enquiry" },
