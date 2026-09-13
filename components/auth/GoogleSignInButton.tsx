@@ -139,6 +139,19 @@ export default function GoogleSignInButton({
           return;
         }
 
+        if (typeof window !== "undefined" && data.user) {
+          try {
+            localStorage.setItem(
+              "kaalrekha_scholar_user",
+              JSON.stringify({
+                name: data.user.name,
+                email: data.user.email,
+                picture: data.user.picture,
+              })
+            );
+          } catch {}
+        }
+
         onSuccess?.(data.user);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Network error during Google authentication.";

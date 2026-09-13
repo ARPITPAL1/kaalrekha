@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, ShieldCheck, CheckCircle2, RefreshCw, ArrowRight, KeyRound } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -23,6 +23,25 @@ export default function EmailVerification({ initialSession, onVerified }: EmailV
   const [verifiedUser, setVerifiedUser] = useState<{ name: string; email: string } | null>(
     initialSession
   );
+
+  // Auto-fill from active login session or cached visitor profile
+  useEffect(() => {
+    if (initialSession && initialSession.email) {
+      setName(initialSession.name || "");
+      setEmail(initialSession.email || "");
+      setVerifiedUser(initialSession);
+      onVerified(initialSession);
+    } else {
+      try {
+        const saved = localStorage.getItem("kaalrekha_scholar_user");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.name && !name) setName(parsed.name);
+          if (parsed.email && !email) setEmail(parsed.email);
+        }
+      } catch {}
+    }
+  }, [initialSession, onVerified]);
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();

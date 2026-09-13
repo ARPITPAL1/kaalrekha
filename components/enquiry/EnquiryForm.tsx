@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Send, CheckCircle2, ShieldAlert, RefreshCw, ArrowLeft, RotateCcw } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
@@ -26,6 +26,53 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [auditInfo, setAuditInfo] = useState<{ timestamp: string; photoAttached?: boolean } | null>(null);
+
+  // Auto-fill form fields by default from login email and user session
+  useEffect(() => {
+    if (userSession) {
+      if (userSession.name) setFullName(userSession.name);
+      if (userSession.email) setEmail(userSession.email);
+
+      // Smart Affiliation Auto-Fill from domain if available
+      const emailDomain = (userSession.email || "").split("@")[1]?.toLowerCase() || "";
+      if (emailDomain.includes("ox.ac.uk")) {
+        setAffiliation("University of Oxford");
+      } else if (emailDomain.includes("cam.ac.uk")) {
+        setAffiliation("University of Cambridge");
+      } else if (emailDomain.includes("harvard.edu")) {
+        setAffiliation("Harvard University");
+      } else if (emailDomain.includes("fmuniversity")) {
+        setAffiliation("Fakir Mohan University");
+      } else if (emailDomain.includes("utkal")) {
+        setAffiliation("Utkal University");
+      }
+    }
+
+    // Restore cached draft / previous preferences if available
+    try {
+      const saved = localStorage.getItem("kaalrekha_enquiry_draft");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.affiliation && !affiliation) setAffiliation(parsed.affiliation);
+        if (parsed.purpose && !purpose) setPurpose(parsed.purpose);
+        if (parsed.preferredMethod && !preferredMethod) setPreferredMethod(parsed.preferredMethod);
+      }
+    } catch {}
+  }, [userSession]);
+
+  // Persist updated draft preferences to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "kaalrekha_enquiry_draft",
+        JSON.stringify({
+          affiliation,
+          purpose,
+          preferredMethod,
+        })
+      );
+    } catch {}
+  }, [affiliation, purpose, preferredMethod]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

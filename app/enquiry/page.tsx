@@ -18,13 +18,29 @@ export default function EnquiryPage() {
   const [tempPhotoData, setTempPhotoData] = useState<string | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
 
-  // Check visitor session on load
+  // Check visitor session on load and auto-fill from login profile
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem("kaalrekha_scholar_user");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.email) {
+          setUserSession({ name: parsed.name || "Verified Scholar", email: parsed.email });
+        }
+      }
+    } catch {}
+
     fetch("/api/auth/session")
       .then((res) => res.json())
       .then((data) => {
         if (data.authenticated && data.user) {
           setUserSession(data.user);
+          try {
+            localStorage.setItem(
+              "kaalrekha_scholar_user",
+              JSON.stringify({ name: data.user.name, email: data.user.email, picture: data.user.picture })
+            );
+          } catch {}
         }
       })
       .catch(() => {})
