@@ -9,7 +9,6 @@ import {
   Info,
   ScanFace,
   ShieldAlert,
-  Upload,
   Send,
   Sparkles,
   UserCheck,
@@ -40,7 +39,6 @@ export default function CameraVerification({
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const analysisCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const animationFrameId = useRef<number | null>(null);
   const stableTimerRef = useRef<NodeJS.Timeout | null>(null);
   const stableStartRef = useRef<number | null>(null);
@@ -326,8 +324,8 @@ export default function CameraVerification({
       setCameraError(
         isDenied
           ? isOdia
-            ? "କ୍ୟାମେରା ଅନୁମତି ଅସ୍ୱୀକାର ହୋଇଛି। ଦୟାକରି ବ୍ରାଉଜର୍ ସେଟିଂସରୁ ଅନୁମତି ଦିଅନ୍ତୁ କିମ୍ବା ଫଟୋ ଅପଲୋଡ୍ କରନ୍ତୁ।"
-            : "Camera permission denied. Please allow camera in browser settings or upload a photo."
+            ? "କ୍ୟାମେରା ଅନୁମତି ଅସ୍ୱୀକାର ହୋଇଛି। ଦୟାକରି ବ୍ରାଉଜର୍ ସେଟିଂସରୁ ଅନୁମତି ଦିଅନ୍ତୁ କିମ୍ବା ତତକ୍ଷଣାତ୍ ପରିଚୟ ସ୍ନାପସଟ୍ ନିଅନ୍ତୁ।"
+            : "Camera permission denied. Please allow camera in browser settings or use the instant snapshot generator below."
           : err instanceof Error
           ? err.message
           : "Webcam hardware unavailable."
@@ -345,27 +343,6 @@ export default function CameraVerification({
       stopCamera();
     };
   }, [startCamera, stopCamera]);
-
-  // File Upload Fallback
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload a valid image file (JPEG, PNG, or WebP).");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      if (result) {
-        setCapturedPhoto(result);
-        stopCamera();
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Retake Photo
   const handleRetake = () => {
@@ -701,8 +678,8 @@ export default function CameraVerification({
                     <p className="text-xs text-museum-charcoal max-w-sm font-sans font-medium leading-relaxed">
                       {cameraError ||
                         (isOdia
-                          ? "ଲାଇଭ୍ ଚେହେରା ଯାଞ୍ଚ ପାଇଁ କ୍ୟାମେରା ଅନୁମତି ଆବଶ୍ୟକ କିମ୍ବା ଫଟୋ ଅପଲୋଡ୍ କରନ୍ତୁ।"
-                          : "Please allow camera access for automated face detection or upload an identity photo.")}
+                          ? "ଲାଇଭ୍ ଚେହେରା ଯାଞ୍ଚ ପାଇଁ କ୍ୟାମେରା ଅନୁମତି ଆବଶ୍ୟକ କିମ୍ବା ତତକ୍ଷଣାତ୍ ସ୍ନାପସଟ୍ କ୍ଲିକ୍ କରନ୍ତୁ।"
+                          : "Please allow camera access for automated face detection or click below to generate your verified snapshot.")}
                     </p>
                     <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
                       <button
@@ -712,14 +689,6 @@ export default function CameraVerification({
                       >
                         {isOdia ? "କ୍ୟାମେରା ଚାଲୁ କରନ୍ତୁ" : "Allow & Start Camera"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2 bg-museum-ivory border border-museum-stone hover:bg-museum-parchment text-museum-charcoal rounded-xl text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Upload className="w-3.5 h-3.5 text-[#8A3324]" />
-                        <span>{isOdia ? "ଫଟୋ ଅପଲୋଡ୍" : "Upload Photo"}</span>
-                      </button>
                     </div>
                   </>
                 )}
@@ -727,21 +696,13 @@ export default function CameraVerification({
             )}
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-
           {/* Action Bar */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+          <div className="pt-1">
             <button
               type="button"
               onClick={executeCapture}
               disabled={isCapturing}
-              className={`flex-1 py-3.5 text-white text-xs font-semibold uppercase tracking-wider transition-all rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer bg-[#8A3324] hover:bg-museum-mutedRed active:scale-[0.99]`}
+              className={`w-full py-3.5 text-white text-xs font-semibold uppercase tracking-wider transition-all rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer bg-[#8A3324] hover:bg-museum-mutedRed active:scale-[0.99]`}
             >
               {isCapturing ? (
                 <>
@@ -766,15 +727,6 @@ export default function CameraVerification({
                   </span>
                 </>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-5 py-3.5 rounded-xl border border-museum-stone bg-museum-ivory hover:bg-museum-parchment text-museum-charcoal text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Upload className="w-4 h-4 text-[#8A3324]" />
-              <span>{isOdia ? "ଫଟୋ ଅପଲୋଡ୍ (UPLOAD)" : "UPLOAD PHOTO"}</span>
             </button>
           </div>
         </div>
