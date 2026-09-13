@@ -247,7 +247,7 @@ export function createPendingVerification(name: string, email: string): { token:
 
   verifications.set(token, record);
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const verifyUrl = `${baseUrl}/onboarding?token=${token}`;
 
   // Record into dev simulated inbox for transparent local evaluation
