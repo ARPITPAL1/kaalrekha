@@ -14,6 +14,8 @@ interface MobileMenuProps {
     picture?: string;
     googleSub?: string;
     authProvider?: string;
+    isAdmin?: boolean;
+    role?: string;
   } | null;
   onLogout: () => void;
   language: "or" | "en";
@@ -105,6 +107,22 @@ export default function MobileMenu({
             </Link>
           );
         })}
+
+        {Boolean(userSession?.isAdmin || userSession?.email?.toLowerCase() === "kumar2000150@gmail.com") && (
+          <Link
+            href="/admin"
+            onClick={onClose}
+            className="group flex items-baseline justify-between py-3 border-b border-museum-terracotta/40 bg-museum-terracotta/5 px-2 rounded-xl"
+          >
+            <div className="flex items-baseline gap-4">
+              <span className="text-xs font-mono text-museum-terracotta font-bold">ADM</span>
+              <span className="font-serif text-2xl tracking-wide text-museum-terracotta font-bold">
+                ADMIN DESK & LOG BOOK
+              </span>
+            </div>
+            <span className="w-2.5 h-2.5 rounded-full bg-museum-terracotta animate-pulse" />
+          </Link>
+        )}
       </nav>
 
       {/* Bottom Session & Utilities */}

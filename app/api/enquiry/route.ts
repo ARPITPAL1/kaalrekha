@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE_NAME, validateSession } from "@/lib/auth";
+import { SESSION_COOKIE_NAME, validateSession, addEnquiryLog } from "@/lib/auth";
 import { checkRateLimit, isValidEmail, sanitizeInput } from "@/lib/security";
 import { sendEmail } from "@/lib/mailer";
 
@@ -131,12 +131,26 @@ IDENTITY PHOTO ATTACHMENT:
       photoBase64: tempPhotoData,
     });
 
+    // 6. Record entry into persistent Admin Log Book
+    const logEntry = addEnquiryLog({
+      fullName,
+      email,
+      affiliation,
+      purpose,
+      preferredMethod,
+      message,
+      tempPhotoData,
+    });
+
     return NextResponse.json({
       success: true,
       message: "Your enquiry has been delivered successfully to the research archive.",
       deliveryMode: mailResult.mode,
       audit: {
         timestamp,
+        logId: logEntry.id,
+        dateFormatted: logEntry.dateFormatted,
+        timeFormatted: logEntry.timeFormatted,
         photoAttached: Boolean(tempPhotoData),
       },
     });

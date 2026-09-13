@@ -17,6 +17,8 @@ export default function Navbar() {
     picture?: string;
     googleSub?: string;
     authProvider?: string;
+    isAdmin?: boolean;
+    role?: string;
   } | null>(null);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
 
@@ -170,7 +172,17 @@ export default function Navbar() {
             </div>
 
             {userSession ? (
-              <div className="hidden lg:flex items-center gap-3 pl-2">
+              <div className="hidden lg:flex items-center gap-2 pl-2">
+                {Boolean(userSession.isAdmin || userSession.email?.toLowerCase() === "kumar2000150@gmail.com") && (
+                  <Link
+                    href="/admin"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-museum-terracotta hover:bg-museum-mutedRed text-white font-mono text-[11px] font-bold tracking-wider uppercase transition-all shadow-xs"
+                  >
+                    <Landmark className="w-3.5 h-3.5" />
+                    <span>ADMIN DESK</span>
+                  </Link>
+                )}
+
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-museum-parchment border border-museum-stone text-museum-charcoal">
                   {userSession.picture ? (
                     // eslint-disable-next-line @next/next/no-img-element

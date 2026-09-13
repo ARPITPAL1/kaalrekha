@@ -20,7 +20,8 @@ export async function GET() {
       picture: session.picture,
       googleSub: session.googleSub,
       authProvider: session.authProvider || "email",
-      role: session.role,
+      role: session.role || "USER",
+      isAdmin: Boolean(session.isAdmin || session.role === "ADMIN"),
       verifiedAt: session.verifiedAt,
     },
   });

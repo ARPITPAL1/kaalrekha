@@ -31,8 +31,12 @@ function OnboardingContent() {
 
   // Enter Archive after Google Auth
   const handleEnterArchive = () => {
-    const redirectPath = searchParams.get("redirect") || "/";
-    router.push(redirectPath);
+    if (verifiedUser?.email?.toLowerCase() === "kumar2000150@gmail.com") {
+      router.push("/admin");
+    } else {
+      const redirectPath = searchParams.get("redirect") || "/";
+      router.push(redirectPath);
+    }
     router.refresh();
   };
 
