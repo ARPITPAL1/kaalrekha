@@ -273,7 +273,6 @@ export default function GoogleSignInButton({
             <div className="p-3 bg-museum-parchment rounded-xl border border-museum-stone text-[11px] font-mono space-y-1 text-museum-charcoal">
               <p className="text-museum-terracotta font-semibold"># In your .env.local file:</p>
               <p>NEXT_PUBLIC_GOOGLE_CLIENT_ID=&quot;your-google-client-id.apps.googleusercontent.com&quot;</p>
-              <p>GOOGLE_CLIENT_ID=&quot;your-google-client-id.apps.googleusercontent.com&quot;</p>
               <p>GOOGLE_CLIENT_SECRET=&quot;your-google-client-secret&quot;</p>
             </div>
 
