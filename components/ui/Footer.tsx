@@ -84,13 +84,13 @@ export default function Footer() {
                 </a>
               </div>
               <div>
-                <span className="text-[10px] font-mono text-museum-charcoalLight block">DEFAULT INBOX:</span>
-                <a
-                  href="mailto:kumar2000150@gmail.com"
-                  className="font-mono text-xs text-museum-terracotta font-bold hover:underline"
+                <span className="text-[10px] font-mono text-museum-charcoalLight block">ACADEMIC DESK:</span>
+                <Link
+                  href="/enquiry"
+                  className="font-mono text-xs text-museum-terracotta font-semibold hover:underline"
                 >
-                  kumar2000150@gmail.com
-                </a>
+                  {isOdia ? "ଅନୁସନ୍ଧାନ ପୋର୍ଟାଲ୍" : "Enquiry Portal & Dispatch"}
+                </Link>
               </div>
             </div>
           </div>

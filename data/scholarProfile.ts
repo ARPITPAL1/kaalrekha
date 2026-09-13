@@ -161,6 +161,6 @@ export const scholarProfile: ScholarProfile = {
     orcid: "0000-0002-4190-8821",
     googleScholar: "https://scholar.google.com/citations?user=dr_anjan_kumar_pal",
     universityProfile: "https://www.fmuniversity.nic.in/faculty/dr-anjan-pal",
-    academicEmail: "kumar2000150@gmail.com",
+    academicEmail: "archive@kaalrekha.org",
   },
 };

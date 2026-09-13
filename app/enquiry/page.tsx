@@ -6,8 +6,7 @@ import Footer from "@/components/ui/Footer";
 import EmailVerification from "@/components/enquiry/EmailVerification";
 import CameraVerification from "@/components/enquiry/CameraVerification";
 import EnquiryForm from "@/components/enquiry/EnquiryForm";
-import { scholarProfile } from "@/data/scholarProfile";
-import { ShieldCheck, Mail, CheckCircle2, Lock, ArrowRight, UserCheck, RotateCcw } from "lucide-react";
+import { CheckCircle2, RotateCcw } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function EnquiryPage() {
@@ -82,8 +81,8 @@ export default function EnquiryPage() {
 
           <p className="font-sans text-base sm:text-lg text-museum-charcoalLight mt-3 leading-relaxed">
             {isOdia
-              ? "ନିରାପଦ ଗବେଷଣା ବାର୍ତ୍ତାଳାପ ପାଇଁ, ଇମେଲ୍ ଯାଞ୍ଚ ବାଧ୍ୟତାମୂଳକ ଏବଂ ଆପଣଙ୍କ ପରିଚୟ ଫଟୋ ସଂଲଗ୍ନ ହୋଇ ସିଧାସଳଖ kumar2000150@gmail.com କୁ ପଠାଯାଏ।"
-              : "For scholarly authenticity, mandatory email verification and an identity snapshot ensure legitimate correspondence, dispatched directly to kumar2000150@gmail.com."}
+              ? "ନିରାପଦ ଗବେଷଣା ବାର୍ତ୍ତାଳାପ ପାଇଁ, ଇମେଲ୍ ଯାଞ୍ଚ ବାଧ୍ୟତାମୂଳକ ଏବଂ ଆପଣଙ୍କ ପରିଚୟ ଫଟୋ ସଂଲଗ୍ନ ହୋଇ ସିଧାସଳଖ ଆର୍କାଇଭ୍ କୁ ପଠାଯାଏ।"
+              : "For scholarly authenticity, mandatory email verification and an identity snapshot ensure legitimate correspondence, dispatched directly to the research archive."}
           </p>
 
           {/* 3-Step Verification Progress Bar */}
@@ -165,7 +164,7 @@ export default function EnquiryPage() {
           />
         )}
 
-        {/* STEP 3: Message Form & Dispatch to kumar2000150@gmail.com */}
+        {/* STEP 3: Message Form & Dispatch */}
         {userSession && photoVerified && (
           <EnquiryForm
             userSession={userSession}
@@ -173,47 +172,6 @@ export default function EnquiryPage() {
             onRestart={handleRestart}
           />
         )}
-
-        {/* Alternative Academic Contact Info */}
-        <div className="pt-10 border-t border-museum-stone">
-          <span className="text-xs uppercase font-mono tracking-wider text-museum-terracotta font-bold block mb-4">
-            {isOdia ? "ସିଧାସଳଖ ଫ୍ୟାକଲ୍ଟି ଯୋଗାଯୋଗ ବିବରଣୀ" : "DIRECT FACULTY CONTACT & REGISTRIES"}
-          </span>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs font-sans">
-            <div className="p-4 bg-museum-parchment/60 border border-museum-stone rounded-xl space-y-1 shadow-xs">
-              <span className="text-museum-charcoalLight font-mono block text-[10px] font-semibold">
-                {isOdia ? "ମୁଖ୍ୟ ପ୍ରାପକ ଇମେଲ୍:" : "DEFAULT RECIPIENT INBOX:"}
-              </span>
-              <a
-                href="mailto:kumar2000150@gmail.com"
-                className="text-museum-charcoal hover:text-museum-terracotta font-mono font-bold break-all"
-              >
-                kumar2000150@gmail.com
-              </a>
-            </div>
-
-            <div className="p-4 bg-museum-parchment/60 border border-museum-stone rounded-xl space-y-1 shadow-xs">
-              <span className="text-museum-charcoalLight font-mono block text-[10px] font-semibold">
-                {isOdia ? "ଅକ୍ସଫୋର୍ଡ ଫ୍ୟାକଲ୍ଟି ଇମେଲ୍:" : "OXFORD FACULTY EMAIL:"}
-              </span>
-              <a
-                href={`mailto:${scholarProfile.socials.academicEmail}`}
-                className="text-museum-charcoal hover:text-museum-terracotta font-mono font-semibold break-all"
-              >
-                {scholarProfile.socials.academicEmail}
-              </a>
-            </div>
-
-            <div className="p-4 bg-museum-parchment/60 border border-museum-stone rounded-xl space-y-1 shadow-xs">
-              <span className="text-museum-charcoalLight font-mono block text-[10px] font-semibold">
-                {isOdia ? "ଶାରୀରିକ କାର୍ଯ୍ୟାଳୟ:" : "PHYSICAL OFFICE:"}
-              </span>
-              <span className="text-museum-charcoal block font-medium">
-                Faculty of Classics, Ioannou Centre, St Giles&apos;, Oxford
-              </span>
-            </div>
-          </div>
-        </div>
       </section>
 
       <Footer />

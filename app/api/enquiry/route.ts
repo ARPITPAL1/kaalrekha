@@ -61,8 +61,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please provide a valid verified email address." }, { status: 400 });
     }
 
-    if (!message || message.length < 10) {
-      return NextResponse.json({ error: "Please write a substantive enquiry message (minimum 10 characters)." }, { status: 400 });
+    if (!message || message.length < 3) {
+      return NextResponse.json({ error: "Please write a substantive enquiry message (minimum 3 characters)." }, { status: 400 });
     }
 
     // 4. Dispatch email to owner inbox (kumar2000150@gmail.com by default)
@@ -133,11 +133,10 @@ IDENTITY PHOTO ATTACHMENT:
 
     return NextResponse.json({
       success: true,
-      message: `Your enquiry has been delivered directly to ${ownerEmail}.`,
+      message: "Your enquiry has been delivered successfully to the research archive.",
       deliveryMode: mailResult.mode,
       audit: {
         timestamp,
-        recipient: ownerEmail,
         photoAttached: Boolean(tempPhotoData),
       },
     });

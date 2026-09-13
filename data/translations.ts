@@ -377,7 +377,7 @@ export const translations: Record<Language, Translations> = {
       captureBtn: "ଫଟୋ କ୍ଲିକ୍ କରନ୍ତୁ",
       retakeBtn: "ପୁନର୍ବାର ନିଅନ୍ତୁ",
       confirmSnapshotBtn: "ଫଟୋ ନିଶ୍ଚିତ କରନ୍ତୁ",
-      dispatchedToEmail: "ଏହି ଅନୁସନ୍ଧାନ ସିଧାସଳଖ kumar2000150@gmail.com କୁ ପ୍ରେରଣ କରାଯିବ।",
+      dispatchedToEmail: "ଏହି ଅନୁସନ୍ଧାନ ସିଧାସଳଖ ଗବେଷଣା ଆର୍କାଇଭ୍ କାର୍ଯ୍ୟାଳୟକୁ ପ୍ରେରଣ କରାଯିବ।",
       privacyClarification: "ଆପଣଙ୍କ ଫଟୋ କୌଣସି ବାୟୋମେଟ୍ରିକ୍ ଡାଟାବେସରେ ସଂରକ୍ଷିତ ହୁଏନାହିଁ; ଏହା କେବଳ ଇମେଲ୍ ସହିତ ମାଲିକଙ୍କ ପାଖକୁ ଯାଏ।",
       submitBtn: "ଅନୁସନ୍ଧାନ ପ୍ରେରଣ କରନ୍ତୁ",
     },
@@ -562,7 +562,7 @@ export const translations: Record<Language, Translations> = {
       captureBtn: "Take Photo",
       retakeBtn: "Retake Photo",
       confirmSnapshotBtn: "Confirm Identity Photo",
-      dispatchedToEmail: "This enquiry will be dispatched directly to kumar2000150@gmail.com.",
+      dispatchedToEmail: "This enquiry will be dispatched directly to the research archive office.",
       privacyClarification:
         "Your photo is never stored in a biometric database; it is transmitted directly to the owner's email along with your message.",
       submitBtn: "Transmit Enquiry",
