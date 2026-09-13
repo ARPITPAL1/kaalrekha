@@ -64,19 +64,17 @@ export default function GoogleSignInButton({
   );
   const gsiButtonRef = useRef<HTMLDivElement>(null);
 
-  // Fetch client ID from server config if not embedded via NEXT_PUBLIC prefix
+  // Fetch client ID from server config dynamically
   useEffect(() => {
-    if (!activeClientId) {
-      fetch("/api/auth/google/config")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.clientId) {
-            setActiveClientId(data.clientId);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [activeClientId]);
+    fetch("/api/auth/google/config", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.clientId) {
+          setActiveClientId(data.clientId);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Load Google Identity Services SDK
   useEffect(() => {
@@ -175,11 +173,24 @@ export default function GoogleSignInButton({
   }, [scriptLoaded, activeClientId, handleCredentialResponse]);
 
   // Button Click Handler
-  const handleButtonClick = () => {
+  const handleButtonClick = async () => {
     setErrorMessage(null);
 
-    // If client ID is not configured yet, explain clearly to the user
-    if (!activeClientId) {
+    let clientIdToUse = activeClientId;
+    if (!clientIdToUse) {
+      try {
+        const res = await fetch("/api/auth/google/config", { cache: "no-store" });
+        const data = await res.json();
+        if (data.clientId) {
+          clientIdToUse = data.clientId;
+          setActiveClientId(data.clientId);
+        }
+      } catch (e) {
+        console.error("Failed to load google config:", e);
+      }
+    }
+
+    if (!clientIdToUse) {
       setShowConfigModal(true);
       return;
     }
@@ -188,7 +199,7 @@ export default function GoogleSignInButton({
 
     if (window.google?.accounts?.id) {
       window.google.accounts.id.initialize({
-        client_id: activeClientId,
+        client_id: clientIdToUse,
         callback: handleCredentialResponse,
       });
 
