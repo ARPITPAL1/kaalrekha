@@ -108,7 +108,7 @@ export default function MobileMenu({
           );
         })}
 
-        {Boolean(userSession?.isAdmin || userSession?.email?.toLowerCase() === "kumar2000150@gmail.com") && (
+        {userSession?.email?.toLowerCase().trim() === "kumar2000150@gmail.com" && (
           <Link
             href="/admin"
             onClick={onClose}

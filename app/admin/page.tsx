@@ -21,6 +21,7 @@ import {
   Sparkles,
   ArrowRight,
   Eye,
+  EyeOff,
   RefreshCw,
   Landmark,
   Lock,
@@ -30,9 +31,14 @@ import {
   Check,
   X,
   ExternalLink,
+  Heart,
+  Image as ImageIcon,
+  Video as VideoIcon,
+  Send,
 } from "lucide-react";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import { Publication } from "@/data/publications";
+import { BlogPost } from "@/lib/blog";
 
 interface LogEntry {
   id: string;
@@ -83,8 +89,8 @@ export default function AdminPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Active Admin Tab: "LOG_BOOK" | "VISITOR_LOGBOOK" | "ADD_RESEARCH" | "OVERVIEW"
-  const [activeTab, setActiveTab] = useState<"LOG_BOOK" | "VISITOR_LOGBOOK" | "ADD_RESEARCH" | "OVERVIEW">("LOG_BOOK");
+  // Active Admin Tab: "LOG_BOOK" | "VISITOR_LOGBOOK" | "BLOG_MANAGER" | "ADD_RESEARCH" | "OVERVIEW"
+  const [activeTab, setActiveTab] = useState<"LOG_BOOK" | "VISITOR_LOGBOOK" | "BLOG_MANAGER" | "ADD_RESEARCH" | "OVERVIEW">("LOG_BOOK");
 
   // Log Book Data & Filter States
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -95,6 +101,21 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | "UNREAD" | "REVIEWED">("ALL");
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
+
+  // Blog Manager State
+  const [adminBlogPosts, setAdminBlogPosts] = useState<BlogPost[]>([]);
+  const [blogLoading, setBlogLoading] = useState(false);
+  const [blogSearch, setBlogSearch] = useState("");
+  const [blogTypeFilter, setBlogTypeFilter] = useState<"ALL" | "photo" | "video" | "text">("ALL");
+  const [newBlogType, setNewBlogType] = useState<"photo" | "video" | "text">("photo");
+  const [newBlogTitle, setNewBlogTitle] = useState("");
+  const [newBlogCaption, setNewBlogCaption] = useState("");
+  const [newBlogMediaUrl, setNewBlogMediaUrl] = useState("");
+  const [newBlogLocation, setNewBlogLocation] = useState("Balasore Archival Center, Odisha");
+  const [newBlogTags, setNewBlogTags] = useState("OdishaHistory, ArchaeologicalSurvey");
+  const [blogPublishing, setBlogPublishing] = useState(false);
+  const [blogSuccess, setBlogSuccess] = useState<string | null>(null);
+  const [blogError, setBlogError] = useState<string | null>(null);
 
   // Research Publisher Form State
   const [researchTitle, setResearchTitle] = useState("");
@@ -121,7 +142,7 @@ export default function AdminPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Fetch Log Book entries when admin session is active
+  // Fetch Log Book entries and Blog posts when admin session is active
   const fetchLogs = async () => {
     setLogsLoading(true);
     try {
@@ -136,6 +157,95 @@ export default function AdminPage() {
       console.warn("Failed to load logs");
     } finally {
       setLogsLoading(false);
+    }
+  };
+
+  const fetchAdminBlogPosts = async () => {
+    setBlogLoading(true);
+    try {
+      const res = await fetch("/api/blog");
+      const data = await res.json();
+      if (data.success && data.posts) {
+        setAdminBlogPosts(data.posts);
+      }
+    } catch {
+      console.warn("Failed to load blog posts");
+    } finally {
+      setBlogLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (session?.email?.toLowerCase().trim() === "kumar2000150@gmail.com") {
+      fetchLogs();
+      fetchAdminBlogPosts();
+    }
+  }, [session]);
+
+  // Handle Admin Publishing Blog Post
+  const handleAdminCreateBlog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBlogError(null);
+    setBlogSuccess(null);
+    setBlogPublishing(true);
+
+    try {
+      const res = await fetch("/api/blog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: newBlogType,
+          title: newBlogTitle,
+          caption: newBlogCaption,
+          mediaUrl: newBlogMediaUrl,
+          location: newBlogLocation,
+          tags: newBlogTags,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to publish blog dispatch.");
+      }
+
+      setBlogSuccess(`✓ Dispatch "${newBlogTitle}" published successfully to social feed!`);
+      setAdminBlogPosts((prev) => [data.post, ...prev]);
+      setNewBlogTitle("");
+      setNewBlogCaption("");
+      setNewBlogMediaUrl("");
+    } catch (err: unknown) {
+      setBlogError(err instanceof Error ? err.message : "Error publishing blog dispatch");
+    } finally {
+      setBlogPublishing(false);
+    }
+  };
+
+  // Handle Admin Toggle Hide/Unhide
+  const handleAdminToggleHide = async (id: string) => {
+    try {
+      const res = await fetch(`/api/blog/${id}`, { method: "PATCH" });
+      const data = await res.json();
+      if (data.success) {
+        setAdminBlogPosts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, isHidden: data.isHidden } : p))
+        );
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Handle Admin Delete Post
+  const handleAdminDeletePost = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this blog dispatch permanently?")) return;
+    try {
+      const res = await fetch(`/api/blog/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setAdminBlogPosts((prev) => prev.filter((p) => p.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -319,8 +429,8 @@ export default function AdminPage() {
     );
   }
 
-  // Non-Admin Access Wall
-  if (!session || !session.isAdmin) {
+  // Strict Non-Admin Access Wall (Only kumar2000150@gmail.com)
+  if (!session || session.email?.toLowerCase().trim() !== "kumar2000150@gmail.com") {
     return (
       <div className="min-h-screen bg-museum-ivory text-museum-charcoal flex flex-col justify-between">
         <Navbar />
@@ -343,7 +453,7 @@ export default function AdminPage() {
           <div className="pt-2">
             <GoogleSignInButton
               onSuccess={(user) => {
-                if (user.email.toLowerCase() === "kumar2000150@gmail.com") {
+                if (user.email.toLowerCase().trim() === "kumar2000150@gmail.com") {
                   window.location.reload();
                 } else {
                   alert(`Signed in as ${user.email}. Only kumar2000150@gmail.com has Administrator privileges.`);
@@ -411,6 +521,18 @@ export default function AdminPage() {
             >
               <User className="w-4 h-4" />
               <span>VISITOR LOGBOOK ({visitorLogins.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("BLOG_MANAGER")}
+              className={`px-4 py-2.5 rounded-lg text-xs font-mono font-bold uppercase transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === "BLOG_MANAGER"
+                  ? "bg-museum-terracotta text-white shadow-xs"
+                  : "text-museum-charcoal hover:bg-museum-parchment"
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>BLOG & FEED ({adminBlogPosts.length})</span>
             </button>
 
             <button
@@ -798,7 +920,361 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 3: RESEARCH PUBLISHER */}
+        {/* TAB 3: BLOG & FEED MANAGER (Social Dispatches, Add & Delete Posts) */}
+        {activeTab === "BLOG_MANAGER" && (
+          <div className="space-y-8">
+            {/* Blog Quick Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="p-5 bg-museum-parchment/60 border border-museum-stone rounded-2xl shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase text-museum-charcoalLight block font-semibold">
+                  TOTAL DISPATCHES
+                </span>
+                <p className="font-serif text-3xl font-bold text-museum-charcoal">{adminBlogPosts.length}</p>
+                <span className="text-[11px] text-museum-charcoalLight block">All archive posts</span>
+              </div>
+
+              <div className="p-5 bg-museum-parchment/60 border border-museum-stone rounded-2xl shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase text-museum-terracotta block font-semibold">
+                  PUBLIC POSTS
+                </span>
+                <p className="font-serif text-3xl font-bold text-museum-terracotta">
+                  {adminBlogPosts.filter((p) => !p.isHidden).length}
+                </p>
+                <span className="text-[11px] text-museum-charcoalLight block">Visible to all visitors</span>
+              </div>
+
+              <div className="p-5 bg-museum-parchment/60 border border-museum-stone rounded-2xl shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase text-amber-700 block font-semibold">
+                  HIDDEN POSTS
+                </span>
+                <p className="font-serif text-3xl font-bold text-amber-800">
+                  {adminBlogPosts.filter((p) => p.isHidden).length}
+                </p>
+                <span className="text-[11px] text-museum-charcoalLight block">Private to admin only</span>
+              </div>
+
+              <div className="p-5 bg-museum-parchment/60 border border-museum-stone rounded-2xl shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase text-museum-olive block font-semibold">
+                  TOTAL LIKES RECEIVED
+                </span>
+                <p className="font-serif text-3xl font-bold text-museum-olive flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-museum-terracotta fill-museum-terracotta" />
+                  <span>{adminBlogPosts.reduce((acc, p) => acc + (p.likesCount || 0), 0)}</span>
+                </p>
+                <span className="text-[11px] text-museum-charcoalLight block">Community engagement</span>
+              </div>
+            </div>
+
+            {/* Create / Upload New Blog Dispatch Card */}
+            <div className="bg-museum-parchment/60 border border-museum-stone rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+              <div className="border-b border-museum-stone pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-museum-terracotta font-bold block">
+                    CREATE & BROADCAST DISPATCH
+                  </span>
+                  <h3 className="font-serif text-2xl font-bold text-museum-charcoal mt-1">
+                    Upload New Post / Social Story
+                  </h3>
+                  <p className="text-xs text-museum-charcoalLight font-sans mt-0.5">
+                    Upload archaeological photos, documentary video clips, or scholarly field notes directly to the public social feed.
+                  </p>
+                </div>
+
+                <Link
+                  href="/blog"
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-museum-ivory border border-museum-stone text-xs font-mono font-semibold text-museum-charcoal hover:border-museum-terracotta transition-all self-start sm:self-auto"
+                >
+                  <Eye className="w-3.5 h-3.5 text-museum-terracotta" />
+                  <span>View Public Feed</span>
+                  <ExternalLink className="w-3 h-3 text-museum-charcoalLight" />
+                </Link>
+              </div>
+
+              {blogSuccess && (
+                <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs text-emerald-900 font-sans flex items-center gap-2 animate-fade-in">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{blogSuccess}</span>
+                </div>
+              )}
+
+              {blogError && (
+                <div className="p-4 bg-red-50 border border-red-300 rounded-2xl text-xs text-red-900 font-sans flex items-center gap-2 animate-fade-in">
+                  <X className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{blogError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleAdminCreateBlog} className="space-y-4 text-xs font-sans">
+                {/* Media Format Selector */}
+                <div>
+                  <label className="block uppercase font-bold text-museum-charcoal mb-1.5">
+                    Select Post Format *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 max-w-md">
+                    <button
+                      type="button"
+                      onClick={() => setNewBlogType("photo")}
+                      className={`py-2.5 px-3 rounded-xl font-mono font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                        newBlogType === "photo"
+                          ? "bg-museum-terracotta text-white border-museum-terracotta shadow-xs"
+                          : "bg-museum-ivory border-museum-stone text-museum-charcoal"
+                      }`}
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      <span>PHOTO</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setNewBlogType("video")}
+                      className={`py-2.5 px-3 rounded-xl font-mono font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                        newBlogType === "video"
+                          ? "bg-museum-terracotta text-white border-museum-terracotta shadow-xs"
+                          : "bg-museum-ivory border-museum-stone text-museum-charcoal"
+                      }`}
+                    >
+                      <VideoIcon className="w-4 h-4" />
+                      <span>VIDEO</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setNewBlogType("text")}
+                      className={`py-2.5 px-3 rounded-xl font-mono font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                        newBlogType === "text"
+                          ? "bg-museum-terracotta text-white border-museum-terracotta shadow-xs"
+                          : "bg-museum-ivory border-museum-stone text-museum-charcoal"
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>NOTE / QUOTE</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="block uppercase font-bold text-museum-charcoal mb-1">
+                    Dispatch Headline / Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={newBlogTitle}
+                    onChange={(e) => setNewBlogTitle(e.target.value)}
+                    placeholder="e.g. Rare Inscription Discovered at Sobhaneswar Temple"
+                    className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal focus:border-museum-terracotta focus:outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Media URL if Photo or Video */}
+                {newBlogType !== "text" && (
+                  <div>
+                    <label className="block uppercase font-bold text-museum-charcoal mb-1">
+                      {newBlogType === "photo" ? "Image Path or Web Image URL *" : "Video Embed URL or MP4 URL *"}
+                    </label>
+                    <input
+                      type="text"
+                      value={newBlogMediaUrl}
+                      onChange={(e) => setNewBlogMediaUrl(e.target.value)}
+                      placeholder={
+                        newBlogType === "photo"
+                          ? "/images/odisha_bhubaneswar_lingaraj_1789302971914.jpg or https://..."
+                          : "https://www.youtube.com/embed/... or /videos/research.mp4"
+                      }
+                      className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal font-mono text-xs focus:border-museum-terracotta focus:outline-none"
+                      required
+                    />
+                    <span className="text-[10px] text-museum-charcoalLight mt-1 block">
+                      Local image files in <code>/images/...</code> or valid web URLs are supported.
+                    </span>
+                  </div>
+                )}
+
+                {/* Caption / Commentary */}
+                <div>
+                  <label className="block uppercase font-bold text-museum-charcoal mb-1">
+                    Caption & Scholarly Field Notes *
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={newBlogCaption}
+                    onChange={(e) => setNewBlogCaption(e.target.value)}
+                    placeholder="Provide detailed historical observations, archival context, dates, and significance..."
+                    className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal focus:border-museum-terracotta focus:outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Location & Tags */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block uppercase font-bold text-museum-charcoal mb-1">
+                      Location Tag
+                    </label>
+                    <input
+                      type="text"
+                      value={newBlogLocation}
+                      onChange={(e) => setNewBlogLocation(e.target.value)}
+                      placeholder="e.g. Konark Sun Temple, Odisha"
+                      className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal focus:border-museum-terracotta focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block uppercase font-bold text-museum-charcoal mb-1">
+                      Hashtags (comma separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={newBlogTags}
+                      onChange={(e) => setNewBlogTags(e.target.value)}
+                      placeholder="OdishaArchaeology, Epigraphy, History"
+                      className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal focus:border-museum-terracotta focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={blogPublishing}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-museum-terracotta text-white hover:bg-museum-mutedRed rounded-xl text-xs font-mono font-bold uppercase tracking-wider shadow-md disabled:opacity-50 cursor-pointer"
+                  >
+                    {blogPublishing ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span>{blogPublishing ? "Publishing..." : "Publish to Social Feed"}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Post Moderation & List Header */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-museum-parchment/40 p-4 rounded-2xl border border-museum-stone">
+                <div className="flex items-center gap-3">
+                  <h4 className="font-serif text-lg font-bold text-museum-charcoal">
+                    Manage Published Dispatches ({adminBlogPosts.length})
+                  </h4>
+                </div>
+
+                <button
+                  onClick={fetchAdminBlogPosts}
+                  disabled={blogLoading}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-museum-ivory border border-museum-stone hover:bg-museum-parchment rounded-xl text-xs font-mono font-semibold text-museum-charcoal transition-all cursor-pointer self-start sm:self-auto"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${blogLoading ? "animate-spin text-museum-terracotta" : ""}`} />
+                  <span>Refresh Feed</span>
+                </button>
+              </div>
+
+              {/* Blog Posts Cards List */}
+              {adminBlogPosts.length === 0 ? (
+                <div className="p-12 text-center bg-museum-parchment/30 border border-dashed border-museum-stone rounded-3xl space-y-2">
+                  <Sparkles className="w-8 h-8 text-museum-charcoalLight/50 mx-auto" />
+                  <p className="font-serif text-lg text-museum-charcoal">No dispatches published yet.</p>
+                  <p className="text-xs text-museum-charcoalLight">
+                    Use the form above to post your first field photo, video, or note.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {adminBlogPosts.map((post) => (
+                    <div
+                      key={post.id}
+                      className={`p-5 bg-museum-ivory border rounded-3xl space-y-4 transition-all shadow-xs ${
+                        post.isHidden
+                          ? "border-amber-300 bg-amber-50/30"
+                          : "border-museum-stone hover:border-museum-terracotta/40"
+                      }`}
+                    >
+                      {/* Card Header: Type Badge & Actions */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase bg-museum-parchment border border-museum-stone text-museum-charcoal flex items-center gap-1">
+                            {post.type === "photo" && <ImageIcon className="w-3 h-3 text-museum-terracotta" />}
+                            {post.type === "video" && <VideoIcon className="w-3 h-3 text-blue-600" />}
+                            {post.type === "text" && <FileText className="w-3 h-3 text-emerald-600" />}
+                            <span>{post.type}</span>
+                          </span>
+
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                              post.isHidden
+                                ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                : "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                            }`}
+                          >
+                            {post.isHidden ? "HIDDEN" : "PUBLIC"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleAdminToggleHide(post.id)}
+                            className={`p-2 rounded-xl border text-xs font-mono font-semibold transition-all cursor-pointer ${
+                              post.isHidden
+                                ? "bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200"
+                                : "bg-museum-parchment border-museum-stone text-museum-charcoalLight hover:text-museum-charcoal"
+                            }`}
+                            title={post.isHidden ? "Unhide Post (Make Public)" : "Hide Post from Visitors"}
+                          >
+                            {post.isHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                          </button>
+
+                          <button
+                            onClick={() => handleAdminDeletePost(post.id)}
+                            className="p-2 bg-museum-parchment border border-museum-stone hover:bg-red-50 hover:text-red-700 text-museum-charcoalLight rounded-xl transition-all cursor-pointer"
+                            title="Delete Dispatch"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Title & Preview */}
+                      <div className="space-y-1.5">
+                        <h4 className="font-serif text-base font-bold text-museum-charcoal leading-snug line-clamp-1">
+                          {post.title}
+                        </h4>
+                        <p className="text-xs text-museum-charcoalLight font-sans line-clamp-2 leading-relaxed">
+                          {post.caption}
+                        </p>
+                      </div>
+
+                      {/* Footer: Date, Likes, Location */}
+                      <div className="pt-3 border-t border-museum-stone flex items-center justify-between text-[11px] font-mono text-museum-charcoalLight">
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 text-museum-terracotta font-semibold">
+                            <Heart className="w-3.5 h-3.5 fill-museum-terracotta" />
+                            <span>{post.likesCount}</span>
+                          </span>
+                          <span>•</span>
+                          <span>{post.dateFormatted}</span>
+                        </div>
+
+                        <Link
+                          href="/blog"
+                          target="_blank"
+                          className="inline-flex items-center gap-1 text-museum-terracotta hover:underline font-semibold"
+                        >
+                          <span>View on Feed</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: RESEARCH PUBLISHER */}
         {activeTab === "ADD_RESEARCH" && (
           <div className="max-w-3xl mx-auto bg-museum-parchment/60 border border-museum-stone rounded-2xl p-6 sm:p-10 shadow-sm space-y-6">
             <div className="border-b border-museum-stone pb-4">

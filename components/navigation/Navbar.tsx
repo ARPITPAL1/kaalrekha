@@ -173,7 +173,7 @@ export default function Navbar() {
 
             {userSession ? (
               <div className="hidden lg:flex items-center gap-2 pl-2">
-                {Boolean(userSession.isAdmin || userSession.email?.toLowerCase() === "kumar2000150@gmail.com") && (
+                {userSession.email?.toLowerCase().trim() === "kumar2000150@gmail.com" && (
                   <Link
                     href="/admin"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-museum-terracotta hover:bg-museum-mutedRed text-white font-mono text-[11px] font-bold tracking-wider uppercase transition-all shadow-xs"
