@@ -16,32 +16,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Check visitor session authentication
+    // 1. Check visitor session authentication (optional, extracts name/email if present)
     const cookieStore = await cookies();
     const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
     const session = validateSession(sessionId);
 
     const body = await request.json();
 
-    // Check email verification status
-    const emailVerified = Boolean(session || body.emailVerified);
-    if (!emailVerified) {
-      return NextResponse.json(
-        { error: "Mandatory email verification required before dispatching academic enquiry." },
-        { status: 401 }
-      );
-    }
-
-    // 2. Validate identity snapshot prerequisite
-    const faceVerified = Boolean(body.faceVerified);
-    if (!faceVerified) {
-      return NextResponse.json(
-        { error: "Identity photo required so the archive owner knows who is actually reaching out." },
-        { status: 403 }
-      );
-    }
-
-    // 3. Extract & Sanitize fields
+    // 2. Extract & Sanitize fields
     const fullName = sanitizeInput(body.fullName || (session ? session.name : ""));
     const email = (body.email || (session ? session.email : "")).trim().toLowerCase();
     const mobile = (body.mobile || "").trim();
@@ -50,7 +32,7 @@ export async function POST(request: Request) {
     const message = sanitizeInput(body.message || "");
     const preferredMethod = sanitizeInput(body.preferredMethod || "Email");
 
-    // Temporary photo data (base64 string) if supplied
+    // Optional photo data (base64 string) if supplied
     const tempPhotoData: string | null = body.tempPhotoData || null;
 
     if (!fullName || fullName.length < 2) {

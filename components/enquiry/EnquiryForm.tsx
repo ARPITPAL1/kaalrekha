@@ -2,21 +2,22 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Send, CheckCircle2, ShieldAlert, RefreshCw, ArrowLeft, RotateCcw } from "lucide-react";
+import { Send, CheckCircle2, ShieldAlert, RefreshCw, ArrowLeft, RotateCcw, User, Mail, Sparkles } from "lucide-react";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface EnquiryFormProps {
-  userSession: { name: string; email: string };
-  tempPhotoData: string | null;
-  onRestart?: () => void;
+  userSession: { name: string; email: string; picture?: string } | null;
+  onLoginSuccess?: (user: { name: string; email: string; picture?: string }) => void;
 }
 
-export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: EnquiryFormProps) {
+export default function EnquiryForm({ userSession, onLoginSuccess }: EnquiryFormProps) {
   const { language } = useLanguage();
   const isOdia = language === "or";
 
   const [fullName, setFullName] = useState(userSession?.name || "");
   const [email, setEmail] = useState(userSession?.email || "");
+  const [mobile, setMobile] = useState("");
   const [affiliation, setAffiliation] = useState("");
   const [purpose, setPurpose] = useState(isOdia ? "ଐତିହାସିକ ଗବେଷଣା ପରାମର୍ଶ" : "Research Collaboration");
   const [preferredMethod, setPreferredMethod] = useState("Email");
@@ -25,7 +26,12 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [auditInfo, setAuditInfo] = useState<{ timestamp: string; photoAttached?: boolean } | null>(null);
+  const [auditInfo, setAuditInfo] = useState<{
+    timestamp: string;
+    dateFormatted?: string;
+    timeFormatted?: string;
+    logId?: string;
+  } | null>(null);
 
   // Auto-fill form fields by default from login email and user session
   useEffect(() => {
@@ -87,6 +93,11 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
       return;
     }
 
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      setErrorMessage(isOdia ? "ଦୟାକରି ଏକ ବୈଧ ଇମେଲ୍ ଠିକଣା ପ୍ରଦାନ କରନ୍ତୁ।" : "Please provide a valid email address.");
+      return;
+    }
+
     if (!cleanMessage || cleanMessage.length < 3) {
       setErrorMessage(
         isOdia
@@ -105,13 +116,11 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
         body: JSON.stringify({
           fullName: cleanName,
           email: cleanEmail,
-          emailVerified: true,
-          faceVerified: true,
+          mobile: mobile.trim(),
           affiliation: affiliation.trim() || "Independent Scholar",
           purpose,
           preferredMethod,
           message: cleanMessage,
-          tempPhotoData,
         }),
       });
 
@@ -122,7 +131,11 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
         return;
       }
 
-      setAuditInfo(data.audit || { timestamp: new Date().toUTCString() });
+      setAuditInfo(data.audit || {
+        timestamp: new Date().toISOString(),
+        dateFormatted: new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" }),
+        timeFormatted: new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata" }),
+      });
       setSubmitted(true);
     } catch {
       setErrorMessage(
@@ -135,55 +148,67 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
     }
   };
 
+  const handleReset = () => {
+    setMessage("");
+    setSubmitted(false);
+    setAuditInfo(null);
+  };
+
   if (submitted) {
     return (
-      <div className="w-full bg-museum-parchment/60 border border-museum-stone rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm animate-fade-in">
+      <div className="w-full bg-museum-parchment/60 border border-museum-stone rounded-3xl p-8 md:p-12 text-center space-y-6 shadow-sm animate-fade-in">
         <div className="w-16 h-16 rounded-full bg-museum-olive/15 border border-museum-olive/40 flex items-center justify-center mx-auto text-museum-olive">
           <CheckCircle2 className="w-9 h-9" />
         </div>
 
         <div>
-          <span className="text-[11px] uppercase font-mono tracking-wider text-museum-terracotta font-semibold">
-            {isOdia ? "ପ୍ରେରଣ ସଫଳ ହେଲା" : "DISPATCH CONFIRMATION"}
+          <span className="text-[11px] uppercase font-mono tracking-widest text-museum-terracotta font-bold block">
+            {isOdia ? "ପ୍ରେରଣ ସଫଳ ହେଲା — ଲଗ୍ ବୁକ୍ ରେ ଯୋଡାଯାଇଛି" : "DISPATCH CONFIRMATION — LOGGED TO ARCHIVE"}
           </span>
           <h3 className="font-serif text-3xl sm:text-4xl font-bold text-museum-charcoal mt-2">
             {isOdia ? "ଅନୁସନ୍ଧାନ ବାର୍ତ୍ତା ସଫଳତାର ସହ ଦାଖଲ ହୋଇଛି" : "Enquiry Successfully Submitted"}
           </h3>
           <p className="font-sans text-base text-museum-charcoalLight max-w-md mx-auto mt-3 leading-relaxed">
             {isOdia
-              ? "ଆପଣଙ୍କ ବାର୍ତ୍ତା ଏବଂ ଯାଞ୍ଚ ହୋଇଥିବା ପରିଚୟ ବିବରଣୀ ସଫଳତାର ସହିତ ପ୍ରେରଣ କରାଯାଇଛି। ଡକ୍ଟର ଅଞ୍ଜନ କୁମାର ପାଲ ଶୀଘ୍ର ଉତ୍ତର ପ୍ରଦାନ କରିବେ।"
-              : "Your message and verified identity credentials have been dispatched securely. Dr. Anjan Kumar Pal will review and respond accordingly."}
+              ? "ଆପଣଙ୍କ ବାର୍ତ୍ତା ସଫଳତାର ସହିତ ପ୍ରେରଣ କରାଯାଇଛି ଏବଂ ଆଡମିନ୍ ଲଗ୍ ବୁକ୍ ରେ ସ୍ୱୟଂଚାଳିତ ଭାବରେ ସଂରକ୍ଷିତ ହୋଇଛି।"
+              : "Your research enquiry has been dispatched to Dr. Anjan Kumar Pal and securely logged into the admin logbook."}
           </p>
         </div>
 
         {/* Audit Verification Card */}
-        <div className="max-w-md mx-auto p-4 bg-museum-ivory border border-museum-stone rounded-xl text-xs font-mono text-left space-y-2 text-museum-charcoal">
-          <div className="flex justify-between border-b border-museum-stone/50 pb-1.5">
-            <span className="text-museum-charcoalLight">{isOdia ? "ଇମେଲ୍ ଯାଞ୍ଚ ସ୍ଥିତି:" : "EMAIL STATUS:"}</span>
-            <span className="text-museum-olive font-bold">{isOdia ? "ପ୍ରମାଣିତ (VERIFIED)" : "VERIFIED"}</span>
+        <div className="max-w-md mx-auto p-5 bg-museum-ivory border border-museum-stone rounded-2xl text-xs font-mono text-left space-y-2.5 text-museum-charcoal shadow-xs">
+          <div className="flex justify-between border-b border-museum-stone/50 pb-2">
+            <span className="text-museum-charcoalLight">{isOdia ? "ପ୍ରେରକଙ୍କ ନାମ:" : "SCHOLAR:"}</span>
+            <span className="font-bold text-museum-charcoal">{fullName}</span>
           </div>
-          <div className="flex justify-between border-b border-museum-stone/50 pb-1.5">
-            <span className="text-museum-charcoalLight">{isOdia ? "ପରିଚୟ ଫଟୋ:" : "IDENTITY SNAPSHOT:"}</span>
-            <span className="text-museum-charcoal">{isOdia ? "ସଂଲଗ୍ନ ଏବଂ ପ୍ରମାଣିତ" : "ATTACHED & VERIFIED"}</span>
+          <div className="flex justify-between border-b border-museum-stone/50 pb-2">
+            <span className="text-museum-charcoalLight">{isOdia ? "ଇମେଲ୍:" : "EMAIL:"}</span>
+            <span className="text-museum-terracotta font-bold">{email}</span>
+          </div>
+          <div className="flex justify-between border-b border-museum-stone/50 pb-2">
+            <span className="text-museum-charcoalLight">{isOdia ? "ଗବେଷଣା ବିଷୟ:" : "PURPOSE:"}</span>
+            <span className="text-museum-charcoal">{purpose}</span>
           </div>
           {auditInfo && (
             <div className="flex justify-between">
-              <span className="text-museum-charcoalLight">{isOdia ? "ସମୟ ମୋହର:" : "TIMESTAMP:"}</span>
-              <span className="text-museum-charcoal">{auditInfo.timestamp}</span>
+              <span className="text-museum-charcoalLight">{isOdia ? "ଭାରତୀୟ ସମୟ (IST):" : "REAL-TIME TIMESTAMP:"}</span>
+              <span className="text-museum-olive font-bold">
+                {auditInfo.dateFormatted && auditInfo.timeFormatted
+                  ? `${auditInfo.dateFormatted}, ${auditInfo.timeFormatted}`
+                  : new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+              </span>
             </div>
           )}
         </div>
 
         <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
-          {onRestart && (
-            <button
-              onClick={onRestart}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-museum-ivory border border-museum-stone hover:bg-museum-parchment text-museum-charcoal text-xs font-sans font-semibold uppercase tracking-wider rounded-xl transition-all shadow-xs cursor-pointer"
-            >
-              <RotateCcw className="w-4 h-4 text-museum-terracotta" />
-              <span>{isOdia ? "ପୁନରାରମ୍ଭ (RESTART)" : "RESTART NEW ENQUIRY"}</span>
-            </button>
-          )}
+          <button
+            onClick={handleReset}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-museum-ivory border border-museum-stone hover:bg-museum-parchment text-museum-charcoal text-xs font-sans font-semibold uppercase tracking-wider rounded-xl transition-all shadow-xs cursor-pointer"
+          >
+            <RotateCcw className="w-4 h-4 text-museum-terracotta" />
+            <span>{isOdia ? "ଅନ୍ୟ ଏକ ପ୍ରଶ୍ନ ପଠାନ୍ତୁ" : "SEND ANOTHER ENQUIRY"}</span>
+          </button>
 
           <Link
             href="/"
@@ -200,24 +225,40 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full bg-museum-parchment/60 border border-museum-stone rounded-2xl p-6 md:p-10 space-y-6 shadow-sm"
+      className="w-full bg-museum-parchment/60 border border-museum-stone rounded-3xl p-6 sm:p-10 space-y-6 shadow-sm"
     >
-      <div className="border-b border-museum-stone pb-4">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-museum-terracotta font-semibold block">
-          {isOdia ? "ପଦକ୍ଷେପ ୩: ଶେଷ ବାର୍ତ୍ତା ପ୍ରେରଣ" : "STEP 3: ACADEMIC MESSAGE DISPATCH"}
-        </span>
-        <h3 className="font-serif text-3xl font-bold text-museum-charcoal mt-1">
-          {isOdia ? "ବାର୍ତ୍ତା ଏବଂ ପ୍ରଶ୍ନାବଳୀ ଫର୍ମ" : "Academic Enquiry Form"}
-        </h3>
-        <p className="text-xs text-museum-charcoalLight font-sans mt-1">
-          {isOdia
-            ? "ଆପଣଙ୍କ ଇମେଲ୍ ଏବଂ ପରିଚୟ ଫଟୋ ସଫଳତାର ସହ ଯାଞ୍ଚ ହୋଇଛି। ଆପଣଙ୍କ ଗବେଷଣା ବାର୍ତ୍ତା ଲେଖି ଦାଖଲ କରନ୍ତୁ।"
-            : "Your email and identity verification are complete. Please enter your research enquiry below."}
-        </p>
+      <div className="border-b border-museum-stone pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="text-[11px] font-mono uppercase tracking-widest text-museum-terracotta font-bold block">
+            {isOdia ? "ଶିକ୍ଷାଗତ ବାର୍ତ୍ତା ଫର୍ମ" : "OFFICIAL SCHOLARLY DISPATCH"}
+          </span>
+          <h3 className="font-serif text-2xl sm:text-3xl font-bold text-museum-charcoal mt-1">
+            {isOdia ? "ବାର୍ତ୍ତା ଏବଂ ପ୍ରଶ୍ନାବଳୀ ଦାଖଲ" : "Research Enquiry Submission"}
+          </h3>
+          <p className="text-xs text-museum-charcoalLight font-sans mt-1">
+            {isOdia
+              ? "ଦାଖଲ ହୋଇଥିବା ପ୍ରତ୍ୟେକ ବାର୍ତ୍ତା ପ୍ରକୃତ ସମୟ ସହିତ ଆଡମିନ୍ ଲଗ୍ ବୁକ୍ ରେ ସଂରକ୍ଷିତ ହୁଏ।"
+              : "Submissions are recorded with real-time timestamps into the archive logbook."}
+          </p>
+        </div>
+
+        {/* Quick Google Login if not logged in */}
+        {!userSession && onLoginSuccess && (
+          <div className="self-start sm:self-auto">
+            <GoogleSignInButton
+              buttonText="Auto-fill with Google"
+              onSuccess={(user) => {
+                setFullName(user.name);
+                setEmail(user.email);
+                onLoginSuccess(user);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {errorMessage && (
-        <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-center gap-2">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-800 flex items-center gap-2 animate-fade-in">
           <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
           <span>{errorMessage}</span>
         </div>
@@ -226,48 +267,51 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Full Name */}
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoalLight mb-1.5 font-semibold">
+          <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoal mb-1.5 font-bold">
             {isOdia ? "ପୂରା ନାମ *" : "FULL NAME *"}
           </label>
           <input
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal focus:border-museum-terracotta focus:outline-none"
+            placeholder="Dr. / Prof. / Scholar Name"
+            className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal placeholder:text-museum-charcoalLight/50 focus:border-museum-terracotta focus:outline-none"
             required
           />
         </div>
 
         {/* Email */}
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoalLight mb-1.5 font-semibold">
-            {isOdia ? "ପ୍ରମାଣିତ ଇମେଲ୍ *" : "VERIFIED EMAIL *"}
+          <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoal mb-1.5 font-bold">
+            {isOdia ? "ଇମେଲ୍ ଠିକଣା *" : "EMAIL ADDRESS *"}
           </label>
           <input
             type="email"
             value={email}
-            disabled
-            className="w-full bg-museum-stone/30 border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoalLight font-mono cursor-not-allowed"
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="scholar@university.edu"
+            className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal font-mono placeholder:text-museum-charcoalLight/50 focus:border-museum-terracotta focus:outline-none"
+            required
           />
         </div>
 
         {/* Affiliation */}
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoalLight mb-1.5 font-semibold">
+          <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoal mb-1.5 font-bold">
             {isOdia ? "ସଂସ୍ଥା / ବିଶ୍ୱବିଦ୍ୟାଳୟ" : "AFFILIATION / INSTITUTION"}
           </label>
           <input
             type="text"
             value={affiliation}
             onChange={(e) => setAffiliation(e.target.value)}
-            placeholder={isOdia ? "ଯେପରିକି: ଉତ୍କଳ ବିଶ୍ୱବିଦ୍ୟାଳୟ / ସ୍ୱତନ୍ତ୍ର ଗବେଷକ" : "e.g. University / Independent Scholar"}
+            placeholder={isOdia ? "ଯେପରିକି: ଉତ୍କଳ ବିଶ୍ୱବିଦ୍ୟାଳୟ / ସ୍ୱତନ୍ତ୍ର ଗବେଷକ" : "e.g. Utkal University / Independent Scholar"}
             className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3 text-sm text-museum-charcoal placeholder:text-museum-charcoalLight/50 focus:border-museum-terracotta focus:outline-none"
           />
         </div>
 
         {/* Purpose */}
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoalLight mb-1.5 font-semibold">
+          <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoal mb-1.5 font-bold">
             {isOdia ? "ଯୋଗାଯୋଗର ଉଦ୍ଦେଶ୍ୟ *" : "PURPOSE OF CONTACT *"}
           </label>
           <select
@@ -287,8 +331,8 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
 
       {/* Message */}
       <div>
-        <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoalLight mb-1.5 font-semibold">
-          {isOdia ? "ଆପଣଙ୍କ ବାର୍ତ୍ତା *" : "YOUR MESSAGE *"}
+        <label className="block text-[11px] font-mono uppercase tracking-wider text-museum-charcoal mb-1.5 font-bold">
+          {isOdia ? "ଆପଣଙ୍କ ବାର୍ତ୍ତା / ପ୍ରଶ୍ନାବଳୀ *" : "YOUR MESSAGE / RESEARCH QUERY *"}
         </label>
         <textarea
           rows={5}
@@ -297,40 +341,29 @@ export default function EnquiryForm({ userSession, tempPhotoData, onRestart }: E
           placeholder={
             isOdia
               ? "ଦୟାକରି ଆପଣଙ୍କ ଐତିହାସିକ ପ୍ରଶ୍ନ, ଗବେଷଣା ବିଷୟ କିମ୍ବା ଆଲୋଚନାର ବିବରଣୀ ଲେଖନ୍ତୁ..."
-              : "Please describe your historical inquiry, research proposal, or academic collaboration..."
+              : "Please describe your historical inquiry, research proposal, or academic collaboration topic..."
           }
-          className="w-full bg-museum-ivory border border-museum-stone rounded-xl p-3.5 text-sm text-museum-charcoal placeholder:text-museum-charcoalLight/50 focus:border-museum-terracotta focus:outline-none font-serif text-base"
+          className="w-full bg-museum-ivory border border-museum-stone rounded-2xl p-4 text-sm text-museum-charcoal placeholder:text-museum-charcoalLight/50 focus:border-museum-terracotta focus:outline-none font-serif text-base leading-relaxed"
           required
         />
       </div>
 
-      {/* Action Buttons: RESTART and SUBMIT */}
-      <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        {onRestart && (
-          <button
-            type="button"
-            onClick={onRestart}
-            className="px-6 py-4 rounded-xl border border-museum-stone bg-museum-ivory hover:bg-museum-parchment text-museum-charcoal text-xs font-bold uppercase tracking-wider transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <RotateCcw className="w-4 h-4 text-museum-terracotta" />
-            <span>{isOdia ? "ରିଷ୍ଟାର୍ଟ (RESTART)" : "RESTART"}</span>
-          </button>
-        )}
-
+      {/* Submit Button */}
+      <div className="pt-2">
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 py-4 bg-museum-terracotta hover:bg-museum-mutedRed text-white text-xs font-bold uppercase tracking-wider transition-all rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+          className="w-full py-4 bg-museum-terracotta hover:bg-museum-mutedRed text-white text-xs font-bold font-mono uppercase tracking-wider transition-all rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
         >
           {loading ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>{isOdia ? "ଦାଖଲ ହେଉଛି..." : "SUBMITTING ENQUIRY..."}</span>
+              <span>{isOdia ? "ଦାଖଲ ହେଉଛି..." : "DISPATCHING ENQUIRY..."}</span>
             </>
           ) : (
             <>
               <Send className="w-4 h-4" />
-              <span>{isOdia ? "ଦାଖଲ କରନ୍ତୁ (SUBMIT ENQUIRY)" : "SUBMIT ENQUIRY"}</span>
+              <span>{isOdia ? "ଦାଖଲ କରନ୍ତୁ (SUBMIT ENQUIRY)" : "SUBMIT ENQUIRY TO ARCHIVE"}</span>
             </>
           )}
         </button>

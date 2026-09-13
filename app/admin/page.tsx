@@ -80,6 +80,39 @@ interface LogStats {
   visitorUnique?: number;
 }
 
+function formatDisplayDate(timestamp?: number, fallback?: string): string {
+  if (!timestamp) return fallback || "";
+  try {
+    const d = new Date(timestamp);
+    if (isNaN(d.getTime())) return fallback || "";
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: "Asia/Kolkata",
+    });
+  } catch {
+    return fallback || "";
+  }
+}
+
+function formatDisplayTime(timestamp?: number, fallback?: string): string {
+  if (!timestamp) return fallback || "";
+  try {
+    const d = new Date(timestamp);
+    if (isNaN(d.getTime())) return fallback || "";
+    return d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kolkata",
+    });
+  } catch {
+    return fallback || "";
+  }
+}
+
 export default function AdminPage() {
   const [session, setSession] = useState<{
     name: string;
@@ -681,12 +714,12 @@ export default function AdminPage() {
                       <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-museum-terracotta/10 text-museum-terracotta font-bold">
                           <Calendar className="w-3 h-3" />
-                          <span>{log.dateFormatted}</span>
+                          <span>{formatDisplayDate(log.timestamp, log.dateFormatted)}</span>
                         </span>
 
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-museum-parchment text-museum-charcoalLight">
                           <Clock className="w-3 h-3" />
-                          <span>{log.timeFormatted}</span>
+                          <span>{formatDisplayTime(log.timestamp, log.timeFormatted)}</span>
                         </span>
 
                         <span
@@ -897,11 +930,11 @@ export default function AdminPage() {
                       <div className="text-right">
                         <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-museum-charcoal">
                           <Calendar className="w-3.5 h-3.5 text-museum-terracotta" />
-                          <span>{vlog.dateFormatted}</span>
+                          <span>{formatDisplayDate(vlog.timestamp, vlog.dateFormatted)}</span>
                         </div>
                         <div className="flex items-center justify-end gap-1 text-[11px] font-mono text-museum-charcoalLight">
                           <Clock className="w-3 h-3" />
-                          <span>{vlog.timeFormatted}</span>
+                          <span>{formatDisplayTime(vlog.timestamp, vlog.timeFormatted)}</span>
                         </div>
                       </div>
 
@@ -1440,7 +1473,7 @@ export default function AdminPage() {
               <div className="flex items-center gap-2 text-xs font-mono text-museum-terracotta font-bold uppercase">
                 <Calendar className="w-3.5 h-3.5" />
                 <span>
-                  {selectedLog.dateFormatted} • {selectedLog.timeFormatted}
+                  {formatDisplayDate(selectedLog.timestamp, selectedLog.dateFormatted)} • {formatDisplayTime(selectedLog.timestamp, selectedLog.timeFormatted)} (IST)
                 </span>
               </div>
               <h3 className="font-serif text-2xl font-bold text-museum-charcoal mt-1">
