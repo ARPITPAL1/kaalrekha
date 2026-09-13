@@ -89,7 +89,7 @@ export async function sendEmail({
   const devLogs = getDevInboxLogs();
   devLogs.unshift({
     id: crypto.randomUUID(),
-    type: "PHOTO_AND_ENQUIRY_DISPATCH",
+    type: "ENQUIRY_DISPATCH",
     to: to,
     name: "KAALREKHA Dispatcher",
     subject: subject,
