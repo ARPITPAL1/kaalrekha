@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { RefreshCw, AlertCircle, Info, Sparkles } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { RefreshCw, AlertCircle, Info } from "lucide-react";
 
 declare global {
   interface Window {
@@ -59,9 +59,24 @@ export default function GoogleSignInButton({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [activeClientId, setActiveClientId] = useState<string>(
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""
+  );
   const gsiButtonRef = useRef<HTMLDivElement>(null);
 
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+  // Fetch client ID from server config if not embedded via NEXT_PUBLIC prefix
+  useEffect(() => {
+    if (!activeClientId) {
+      fetch("/api/auth/google/config")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.clientId) {
+            setActiveClientId(data.clientId);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [activeClientId]);
 
   // Load Google Identity Services SDK
   useEffect(() => {
@@ -89,13 +104,55 @@ export default function GoogleSignInButton({
     }
   }, []);
 
+  // Handle Google Token Response from GIS
+  const handleCredentialResponse = useCallback(
+    async (response: { credential: string }) => {
+      if (!response?.credential) {
+        const msg = "Google authentication was cancelled or returned no credentials.";
+        setErrorMessage(msg);
+        onError?.(msg);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const res = await fetch("/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential: response.credential }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          const errorMsg = data.error || "Google authentication verification failed.";
+          setErrorMessage(errorMsg);
+          onError?.(errorMsg);
+          setLoading(false);
+          return;
+        }
+
+        onSuccess?.(data.user);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Network error during Google authentication.";
+        setErrorMessage(msg);
+        onError?.(msg);
+        setLoading(false);
+      }
+    },
+    [onError, onSuccess]
+  );
+
   // Initialize GSI when script is loaded and client ID is available
   useEffect(() => {
-    if (!scriptLoaded || !window.google?.accounts?.id || !clientId) return;
+    if (!scriptLoaded || !window.google?.accounts?.id || !activeClientId) return;
 
     try {
       window.google.accounts.id.initialize({
-        client_id: clientId,
+        client_id: activeClientId,
         callback: handleCredentialResponse,
         auto_select: false,
         cancel_on_tap_outside: true,
@@ -115,53 +172,14 @@ export default function GoogleSignInButton({
     } catch (err) {
       console.warn("[Google Auth] GSI Initialization notice:", err);
     }
-  }, [scriptLoaded, clientId]);
-
-  // Handle Google Token Response from GIS
-  const handleCredentialResponse = async (response: { credential: string }) => {
-    if (!response?.credential) {
-      const msg = "Google authentication was cancelled or returned no credentials.";
-      setErrorMessage(msg);
-      onError?.(msg);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const res = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential: response.credential }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        const errorMsg = data.error || "Google authentication verification failed.";
-        setErrorMessage(errorMsg);
-        onError?.(errorMsg);
-        setLoading(false);
-        return;
-      }
-
-      onSuccess?.(data.user);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Network error during Google authentication.";
-      setErrorMessage(msg);
-      onError?.(msg);
-      setLoading(false);
-    }
-  };
+  }, [scriptLoaded, activeClientId, handleCredentialResponse]);
 
   // Button Click Handler
   const handleButtonClick = () => {
     setErrorMessage(null);
 
     // If client ID is not configured yet, explain clearly to the user
-    if (!clientId) {
+    if (!activeClientId) {
       setShowConfigModal(true);
       return;
     }
@@ -170,7 +188,7 @@ export default function GoogleSignInButton({
 
     if (window.google?.accounts?.id) {
       window.google.accounts.id.initialize({
-        client_id: clientId,
+        client_id: activeClientId,
         callback: handleCredentialResponse,
       });
 
@@ -271,8 +289,8 @@ export default function GoogleSignInButton({
             </p>
 
             <div className="p-3 bg-museum-parchment rounded-xl border border-museum-stone text-[11px] font-mono space-y-1 text-museum-charcoal">
-              <p className="text-museum-terracotta font-semibold"># In your .env.local file:</p>
-              <p>NEXT_PUBLIC_GOOGLE_CLIENT_ID=&quot;your-google-client-id.apps.googleusercontent.com&quot;</p>
+              <p className="text-museum-terracotta font-semibold"># In your .env.local file or Vercel:</p>
+              <p>GOOGLE_CLIENT_ID=&quot;your-google-client-id.apps.googleusercontent.com&quot;</p>
               <p>GOOGLE_CLIENT_SECRET=&quot;your-google-client-secret&quot;</p>
             </div>
 
